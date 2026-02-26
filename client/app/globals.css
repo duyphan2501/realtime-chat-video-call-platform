@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #2b2bee;
+  --color-secondary: #191a2e;
+  --color-background: #0f0f1a;
+  --color-surface: #181829;
+  --color-blue: #2c2ce9;
+  --color-dark-gray: #1c2232;
+}
+
+.container {
+  width: 100%;
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    max-width: 100%;
+    padding: 0 12px;
+  }
+}
+
+* {
+  font-family: "Inter", sans-serif !important;
+}
+
+.title {
+  font-family: "Barlow Condensed", sans-serif !important;
+}
+
+.subtitle {
+  font-family: "Poppins", sans-serif !important;
+}
+
+.money {
+  font-family: "Outfit" !important;
+}
