@@ -1,7 +1,10 @@
-import { refreshTokenExpiresIn, refreshTokenTTL } from "../config/TTL.config.js";
+import {
+  refreshTokenExpiresIn,
+  refreshTokenTTL,
+} from "../config/TTL.config.js";
 import createHttpError from "http-errors";
 import UserModel from "../models/user.model.js";
-import { checkPassword } from "../helpers/auth.helper.js";
+import { checkPassword, verifyGoogleToken } from "../helpers/auth.helper.js";
 import { generateRefreshToken } from "../helpers/jwt.helper.js";
 import { filterFieldUser } from "../utils/filter.util.js";
 
@@ -27,12 +30,15 @@ const loginService = async (email, password) => {
     };
   }
   const isCorrectPassword = foundUser.password === password;
-//   const isCorrectPassword = await checkPassword(password, foundUser.password);
+  //   const isCorrectPassword = await checkPassword(password, foundUser.password);
   if (!isCorrectPassword)
     throw createHttpError.Unauthorized("Incorrect password");
 
   // Logic xử lý Token & DB
-  const refreshToken = await generateRefreshToken(foundUser._id, refreshTokenExpiresIn);
+  const refreshToken = await generateRefreshToken(
+    foundUser._id,
+    refreshTokenExpiresIn,
+  );
   foundUser.refreshToken = refreshToken;
   foundUser.refreshTokenExpireAt = new Date(Date.now() + refreshTokenTTL);
   await foundUser.save();
@@ -48,4 +54,39 @@ const loginService = async (email, password) => {
   };
 };
 
-export { loginService };
+const googleLoginService = async (token) => {
+  const payload = await verifyGoogleToken(token);
+  const user = {
+    email: payload.email,
+    name: payload.name,
+    password: "google",
+  };
+
+  let foundUser = await UserModel.findOne({ email: user.email });
+
+  if (!foundUser) {
+    foundUser = await UserModel.create(user);
+    if (!foundUser)
+      throw createHttpError.InternalServerError("Failed to create user");
+  }
+
+  const refreshToken = await generateRefreshToken(
+    foundUser._id,
+    refreshTokenExpiresIn,
+  );
+  foundUser.refreshToken = refreshToken;
+  foundUser.refreshTokenExpireAt = new Date(Date.now() + refreshTokenTTL);
+  await foundUser.save();
+
+  return {
+    status: 200,
+    data: {
+      message: "Login successfully!",
+      user: filterFieldUser(foundUser),
+      refreshToken,
+      userId: foundUser._id,
+    },
+  };
+};
+
+export { loginService, googleLoginService };

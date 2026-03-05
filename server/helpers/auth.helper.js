@@ -1,4 +1,6 @@
 import bcrypt from "bcryptjs";
+import ENV from "../utils/env.util.js";
+import { OAuth2Client } from "google-auth-library";
 
 const checkPassword = (password, hashedPassword) => {
   return new Promise((resolve, reject) => {
@@ -21,5 +23,18 @@ const hashPassword = (password) => {
   });
 };
 
+const verifyGoogleToken = async (token) => {
+  const clientId = ENV.GOOGLE_CLIENT_ID;
+  const client = new OAuth2Client(clientId);
 
-export { checkPassword, hashPassword };
+  const ticket = await client.verifyIdToken({
+    idToken: token,
+    audience: clientId,
+  });
+
+  const payload = ticket.getPayload();
+
+  return payload;
+};
+
+export { checkPassword, hashPassword, verifyGoogleToken };

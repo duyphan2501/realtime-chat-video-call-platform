@@ -15,6 +15,7 @@ interface AuthState {
   setAccessToken: (token: string | null) => void;
   refreshToken: () => Promise<{ accessToken: string }>;
   login: (email: string, password: string) => Promise<void>;
+  googleLogin: (token: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -54,6 +55,16 @@ const useAuthStore = create<AuthState>((set, get) => ({
     } finally {
       set({ user: null, accessToken: null });
       // Xóa các dữ liệu nhạy cảm khác nếu cần
+    }
+  },
+
+  googleLogin: async (token: string) => {
+    try {
+      const response = await API.post("/auth/google", { token });
+      const { user, accessToken } = response.data;
+      set({ user, accessToken });
+    } catch (error) {
+      throw error;
     }
   },
 }));
