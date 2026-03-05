@@ -1,13 +1,13 @@
 import axios from "axios";
 
-const API = axios.create({
+const axiosPublic = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
-    withCredentials: true,
+  withCredentials: true, 
 });
 
 const axiosPrivate = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
-    withCredentials: true,
+  withCredentials: true,
 });
 
-export { API, axiosPrivate };
+export { axiosPublic, axiosPrivate };

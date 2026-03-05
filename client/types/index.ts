@@ -4,7 +4,7 @@
 
 export interface User {
   _id: string;
-  fullName: string;   // hoặc "name" tuỳ backend của bạn
+  name: string;   
   email: string;
   avatar: string;
   phone?: string;

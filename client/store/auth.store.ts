@@ -1,72 +1,37 @@
-import { API } from "@/API/axiosIntance";
 import { create } from "zustand";
-
-interface User {
-  _id: string;
-  fullName: string;
-  email: string;
-  avatar?: string;
-}
+import { persist } from "zustand/middleware";
+import { authService } from "@/services/auth.service"; 
+import { axiosPublic } from "@/API/axiosIntance";
 
 interface AuthState {
-  user: User | null;
+  user: any | null;
   accessToken: string | null;
-  setUser: (user: User | null) => void;
-  setAccessToken: (token: string | null) => void;
-  refreshToken: () => Promise<{ accessToken: string }>;
-  login: (email: string, password: string) => Promise<void>;
-  googleLogin: (token: string) => Promise<void>;
-  logout: () => Promise<void>;
+  setAuth: (user: any, token: string | null) => void;
+  handleRefreshToken: () => Promise<string>;
+  clearAuth: () => void;
 }
 
-const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  accessToken: null,
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      accessToken: null,
 
-  setUser: (user) => set({ user }),
+      setAuth: (user, accessToken) => set({ user, accessToken }),
 
-  setAccessToken: (token) => set({ accessToken: token }),
+      handleRefreshToken: async () => {
+        // Interceptor sẽ gọi hàm này khi token hết hạn
+        const api = authService(axiosPublic);
+        const { data } = await api.refreshToken();
+        set({ accessToken: data.accessToken });
+        return data.accessToken;
+      },
 
-  refreshToken: async () => {
-    try {
-      const response = await API.post("/auth/refresh-token");
-      const { accessToken } = response.data;
-      set({ accessToken });
-      return { accessToken };
-    } catch (error) {
-      get().logout();
-      throw error;
-    }
-  },
-
-  login: async (email: string, password: string) => {
-    try {
-      const response = await API.post("/auth/login", { email, password });
-      const { user, accessToken } = response.data;
-      set({ user, accessToken });
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  logout: async () => {
-    try {
-      await API.post("/auth/logout");
-    } finally {
-      set({ user: null, accessToken: null });
-      // Xóa các dữ liệu nhạy cảm khác nếu cần
-    }
-  },
-
-  googleLogin: async (token: string) => {
-    try {
-      const response = await API.post("/auth/google", { token });
-      const { user, accessToken } = response.data;
-      set({ user, accessToken });
-    } catch (error) {
-      throw error;
-    }
-  },
-}));
-
-export default useAuthStore;
+      clearAuth: () => {
+        set({ user: null, accessToken: null });
+        localStorage.removeItem("auth-storage");
+      },
+    }),
+    { name: "auth-storage" }
+  )
+);

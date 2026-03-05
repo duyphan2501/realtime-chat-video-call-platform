@@ -1,11 +1,11 @@
-import useAuthStore from "@/store/auth.store";
+import { useAPI } from "@/hooks";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { AxiosError } from "axios";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 
 const GoogleButton = ({ isLogin }: { isLogin: boolean }) => {
-  const { googleLogin } = useAuthStore();
+  const { googleLogin } = useAPI().auth;
   const router = useRouter();
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
