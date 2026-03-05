@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Inter, Poppins, Outfit, Barlow_Condensed } from "next/font/google";
+import { Toaster } from "react-hot-toast";
+import { ContextProvider } from "@/context/MyContext";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -44,10 +46,13 @@ export default function RootLayout({
         ${poppins.variable}
         ${outfit.variable}
         ${barlow.variable}
-        bg-background
+        bg-background!
       `}
       >
-        {children}
+        <ContextProvider>
+          {children}
+          <Toaster position="top-center" reverseOrder={false} />
+        </ContextProvider>
       </body>
     </html>
   );

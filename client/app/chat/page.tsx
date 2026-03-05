@@ -26,7 +26,7 @@ import VideoCallModal from "@/components/call/VideoCallModal";
 export default function ChatPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [friends,     setFriends]     = useState<User[]>([]);
-  const [loading,     setLoading]     = useState(true);
+  const [loading,     setLoading]     = useState(false);
   const [tab,         setTab]         = useState<Tab>("chat");
   const [showCreate,  setShowCreate]  = useState(false);
 
@@ -41,35 +41,35 @@ export default function ChatPage() {
   const setConvId      = useCallStore((s) => s.setConvId);
 
   /* ─── Bootstrap: load user + convs + friends + socket ─ */
-  useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) { window.location.href = "/auth"; return; }
+  // useEffect(() => {
+  //   const token = localStorage.getItem("accessToken");
+  //   if (!token) { window.location.href = "/auth"; return; }
 
-    (async () => {
-      try {
-        // TODO ①: getMe
-        const meRes = await userApi.getMe();
-        const me: User = meRes.user ?? meRes.data ?? meRes;
-        setCurrentUser(me);
+  //   (async () => {
+  //     try {
+  //       // TODO ①: getMe
+  //       const meRes = await userApi.getMe();
+  //       const me: User = meRes.user ?? meRes.data ?? meRes;
+  //       setCurrentUser(me);
 
-        // TODO ②: getAll conversations
-        const convRes = await conversationApi.getAll();
-        const convs: Conversation[] = convRes.conversations ?? convRes.data ?? [];
-        setConvs(convs);
+  //       // TODO ②: getAll conversations
+  //       const convRes = await conversationApi.getAll();
+  //       const convs: Conversation[] = convRes.conversations ?? convRes.data ?? [];
+  //       setConvs(convs);
 
-        // TODO ③: getFriends
-        const friendsRes = await userApi.getFriends();
-        setFriends(friendsRes.friends ?? friendsRes.data ?? []);
+  //       // TODO ③: getFriends
+  //       const friendsRes = await userApi.getFriends();
+  //       setFriends(friendsRes.friends ?? friendsRes.data ?? []);
 
-        // TODO ④: init socket
-        initSocket(token);
-      } catch {
-        window.location.href = "/auth";
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [initSocket, setConvs]);
+  //       // TODO ④: init socket
+  //       initSocket(token);
+  //     } catch {
+  //       window.location.href = "/auth";
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   })();
+  // }, [initSocket, setConvs]);
 
   /* ─── Handle start call ──────────────────────────────
      TODO ⑤: emit "call:invite" qua socket

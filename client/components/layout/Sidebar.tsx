@@ -68,8 +68,7 @@ export default function Sidebar({ activeTab, onTabChange, currentUser, friendReq
             `https://ui-avatars.com/api/?name=U&background=fff&color=0068FF&bold=true&size=40`
           }
           alt="avatar"
-          className="w-10 h-10 rounded-full object-cover transition-all"
-          style={{ ring: "2px solid rgba(255,255,255,.25)" }}
+          className="w-10 h-10 rounded-full object-cover transition-all ring-2 ring-white ring-opacity-25"
         />
         {/* Online dot */}
         <span
