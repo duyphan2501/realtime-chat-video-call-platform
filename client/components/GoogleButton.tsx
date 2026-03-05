@@ -5,7 +5,7 @@ import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 // import useUserStore from "../../store/useUserStore";
 
 const GoogleButton = ({ isLogin }: {isLogin: boolean}) => {
-  const clientId = "VITE_GOOGLE_CLIENT_ID";
+  const clientId = "883317690145-g1o1nkgt6rkup3h3nltf52rgraa7v9ku.apps.googleusercontent.com";
 //   const navigate = useNavigate();
 //   const { setUser } = useUserStore();
 
