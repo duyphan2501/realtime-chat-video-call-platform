@@ -1,6 +1,4 @@
-import dotenv from "dotenv";
 import { verifyAccessToken } from "../helpers/jwt.helper.js";
-dotenv.config({ quiet: true });
 
 const checkAuth = async (req, res, next) => {
   const accessToken =
@@ -22,4 +20,4 @@ const checkAuth = async (req, res, next) => {
   }
 };
 
-export default checkAuth;
+export { checkAuth };

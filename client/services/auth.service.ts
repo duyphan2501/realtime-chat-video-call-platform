@@ -13,6 +13,7 @@ export const useAuthService = () => {
   const api = useAPI();
   const setAuth = useAuthStore((s) => s.setAuth);
   const clearAuth = useAuthStore((s) => s.clearAuth);
+  const setSessionExpired = useAuthStore((s) => s.setSessionExpired);
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -41,10 +42,27 @@ export const useAuthService = () => {
     },
   });
 
+  const getMeMutation = useMutation({
+    mutationFn: () => api.auth.getMe(),
+    onSuccess: (res) => setAuth(res.data.user, res.data.accessToken),
+    onError: () => setSessionExpired(true)
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: () => api.auth.logout(),
+    onSettled: () => {
+      clearAuth();
+      queryClient.clear();
+      router.push("/login");
+      toast.success("Logged out successfully");
+    },
+  });
+
   return {
     login: loginMutation.mutateAsync,
-    isLoggingIn: loginMutation.isPending,
+    getMe: getMeMutation.mutateAsync,
     googleLogin: googleLoginMutation.mutateAsync,
-    logout: clearAuth,
+    isLoggingIn: loginMutation.isPending,
+    logout: logoutMutation.mutateAsync,
   };
 };

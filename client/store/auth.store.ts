@@ -1,37 +1,36 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import { axiosPublic } from "@/API/axiosIntance";
 import { authAPI } from "@/API/authAPI";
+import { axiosPublic } from "@/API/axiosIntance";
+import { create } from "zustand";
 
 interface AuthState {
   user: any | null;
   accessToken: string | null;
+  isSessionExpired: boolean;
+  setSessionExpired: (status: boolean) => void;
   setAuth: (user: any, token: string | null) => void;
   handleRefreshToken: () => Promise<string>;
   clearAuth: () => void;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      accessToken: null,
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  user: null,
+  accessToken: null,
+  isSessionExpired: false,
+  setSessionExpired: (status) => set({ isSessionExpired: status }),
 
-      setAuth: (user, accessToken) => set({ user, accessToken }),
+  setAuth: (user, accessToken = null) => {
+    if (!accessToken) accessToken = get().accessToken;
+    set({ user, accessToken });
+  },
 
-      handleRefreshToken: async () => {
-        // Interceptor sẽ gọi hàm này khi token hết hạn
-        const api = authAPI(axiosPublic);
-        const { data } = await api.refreshToken();
-        set({ accessToken: data.accessToken });
-        return data.accessToken;
-      },
+  handleRefreshToken: async () => {
+    const api = authAPI(axiosPublic);
+    const { data } = await api.refreshToken();
+    get().setAuth(data.user, data.accessToken)
+    return data.accessToken;
+  },
 
-      clearAuth: () => {
-        set({ user: null, accessToken: null });
-        localStorage.removeItem("auth-storage");
-      },
-    }),
-    { name: "auth-storage" }
-  )
-);
+  clearAuth: () => {
+    set({ user: null, accessToken: null });
+  },
+}));

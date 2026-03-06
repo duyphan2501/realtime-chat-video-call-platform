@@ -1,34 +1,34 @@
 import jwt from "jsonwebtoken";
 import ENV from "../utils/env.util.js";
 
-const generateAccessToken = async (userId, expire="15m") => {
+const generateAccessToken = async (payload, expire = "15m") => {
   const token = await new Promise((resolve, reject) => {
     jwt.sign(
-      { userId },
+      payload,
       ENV.ACCESS_TOKEN_SECRET_KEY,
       { expiresIn: expire },
       (err, token) => {
         if (err) reject(err);
         else resolve(token);
-      }
+      },
     );
   });
   return token;
 };
 
-const generateRefreshToken = async (userId, expire="7d") => {
+const generateRefreshToken = async (payload, expire = "7d") => {
   const token = await new Promise((resolve, reject) => {
     jwt.sign(
-      { userId },
+      payload,
       ENV.REFRESH_TOKEN_SECRET_KEY,
       { expiresIn: expire },
       (err, token) => {
         if (err) reject(err);
         else resolve(token);
-      }
+      },
     );
   });
-  
+
   return token;
 };
 
@@ -43,27 +43,19 @@ const setCookieWithToken = (res, token, name, ttl) => {
 
 const verifyRefreshToken = async (refreshToken) => {
   return new Promise((resolve, reject) => {
-    jwt.verify(
-      refreshToken,
-      ENV.REFRESH_TOKEN_SECRET_KEY,
-      (err, payload) => {
-        if (err) return reject(err);
-        return resolve(payload);
-      }
-    );
+    jwt.verify(refreshToken, ENV.REFRESH_TOKEN_SECRET_KEY, (err, payload) => {
+      if (err) return reject(err);
+      return resolve(payload);
+    });
   });
 };
 
 const verifyAccessToken = async (accessToken) => {
   return new Promise((resolve, reject) => {
-    jwt.verify(
-      accessToken,
-      ENV.ACCESS_TOKEN_SECRET_KEY,
-      (err, payload) => {
-        if (err) return reject(err);
-        return resolve(payload);
-      }
-    );
+    jwt.verify(accessToken, ENV.ACCESS_TOKEN_SECRET_KEY, (err, payload) => {
+      if (err) return reject(err);
+      return resolve(payload);
+    });
   });
 };
 
