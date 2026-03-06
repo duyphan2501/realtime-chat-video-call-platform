@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { authService } from "@/services/auth.service"; 
 import { axiosPublic } from "@/API/axiosIntance";
+import { authAPI } from "@/API/authAPI";
 
 interface AuthState {
   user: any | null;
@@ -21,7 +21,7 @@ export const useAuthStore = create<AuthState>()(
 
       handleRefreshToken: async () => {
         // Interceptor sẽ gọi hàm này khi token hết hạn
-        const api = authService(axiosPublic);
+        const api = authAPI(axiosPublic);
         const { data } = await api.refreshToken();
         set({ accessToken: data.accessToken });
         return data.accessToken;

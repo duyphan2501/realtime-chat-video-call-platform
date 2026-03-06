@@ -3,6 +3,7 @@ import "./globals.css";
 import { Inter, Poppins, Outfit, Barlow_Condensed } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import { ContextProvider } from "@/context/MyContext";
+import QueryProvider from "@/components/QueryProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -49,10 +50,12 @@ export default function RootLayout({
         bg-background!
       `}
       >
-        <ContextProvider>
-          {children}
-          <Toaster position="top-center" reverseOrder={false} />
-        </ContextProvider>
+        <QueryProvider>
+          <ContextProvider>
+            {children}
+            <Toaster position="top-center" reverseOrder={false} />
+          </ContextProvider>
+        </QueryProvider>
       </body>
     </html>
   );

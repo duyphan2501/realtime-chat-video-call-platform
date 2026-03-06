@@ -5,49 +5,24 @@ import { SubmitEvent, useState } from "react";
 import GoogleButton from "./GoogleButton";
 import toast from "react-hot-toast";
 import IconLoading from "../IconLoading";
-import { AxiosError } from "axios";
-import { useRouter } from "next/navigation";
 import { useMyContext } from "@/context/MyContext";
-import { useAPI } from "@/hooks";
+import { useAuthService } from "@/services";
 
 const AuthForm = () => {
   const [tab, setTab] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const { persist, setPersist } = useMyContext();
-  const api = useAPI();
+  const { login, isLoggingIn } = useAuthService();
 
   const handleLogin = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Login attempt with:", { email });
-    if (isLoading) return;
-
     if (!email || !password) {
       toast.error("Please fill all fields");
       return;
     }
-
-    try {
-      setIsLoading(true);
-
-      await api.auth.login({ email, password });
-
-      toast.success("Welcome back!");
-      router.push("/");
-    } catch (error: unknown) {
-      const message =
-        error instanceof AxiosError
-          ? error.response?.data?.message
-          : "Login failed";
-      console.dir(error);
-
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
-    }
+    await login({ email, password });
   };
 
   return (
@@ -144,10 +119,10 @@ const AuthForm = () => {
 
             <button
               className="w-full h-14 bg-primary text-white font-bold flex justify-center items-center rounded-lg hover:bg-blue-800 cursor-pointer"
-              disabled={isLoading}
+              disabled={isLoggingIn}
               type="submit"
             >
-              {isLoading ? <IconLoading size={26} /> : "Log In"}
+              {isLoggingIn ? <IconLoading size={26} /> : "Log In"}
             </button>
           </form>
           <div className="flex items-center justify-center gap-3 my-6">
