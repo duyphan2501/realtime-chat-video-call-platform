@@ -1,9 +1,11 @@
-import Loading from "@/components/Loading"
+import Loading from "@/components/loadings/Loading";
 
 const loading = () => {
   return (
-    <div><Loading /></div>
-  )
-}
+    <div>
+      <Loading />
+    </div>
+  );
+};
 
-export default loading
+export default loading;

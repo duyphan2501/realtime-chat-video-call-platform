@@ -4,7 +4,7 @@ import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { SubmitEvent, useState } from "react";
 import GoogleButton from "./GoogleButton";
 import toast from "react-hot-toast";
-import IconLoading from "../IconLoading";
+import IconLoading from "../loadings/IconLoading";
 import { useMyContext } from "@/context/MyContext";
 import { useAuthService } from "@/services";
 

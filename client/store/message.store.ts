@@ -4,7 +4,7 @@ import type { Message, Reaction } from "@/types";
 interface MessageState {
   messages: Record<string, Message[]>; // CID -> Message[]
   replyingTo: Message | null;
-
+  
   // Actions
   setMessages: (cid: string, msgs: Message[]) => void;
   addMessage: (msg: Message) => void;
@@ -18,7 +18,6 @@ interface MessageState {
 export const useMessageStore = create<MessageState>((set) => ({
   messages: {},
   replyingTo: null,
-
   setMessages: (cid, msgs) => set((s) => ({
     messages: { ...s.messages, [cid]: msgs }
   })),

@@ -9,8 +9,8 @@
 "use client";
 import { useState } from "react";
 import type { Conversation, User, Participant } from "@/types";
-import { useChatStore } from "@/store";
 import { conversationApi } from "@/lib/api";
+import { useMessageStore } from "@/store";
 
 interface Props {
   conversation: Conversation;
@@ -20,7 +20,7 @@ interface Props {
 
 export default function RightPanel({ conversation: conv, currentUser, onClose }: Props) {
   const [openSection, setOpenSection] = useState<string | null>("members");
-  const messages = useChatStore((s) => s.messages[conv._id] || []);
+  const messages = useMessageStore((s) => s.messages[conv._id] || []);
 
   // TODO ③: lọc ảnh/file từ messages trong store
   const images = messages.flatMap((m) =>
@@ -67,7 +67,7 @@ export default function RightPanel({ conversation: conv, currentUser, onClose }:
             className="w-16 h-16 rounded-full object-cover mb-3"
           />
           <p className="font-bold text-base text-center" style={{ color: "var(--color-ink)" }}>
-            {isGroup ? conv.name : otherUser?.fullName}
+            {isGroup ? conv.name : otherUser?.name}
           </p>
           {!isGroup && otherUser?.email && (
             <p className="text-xs mt-0.5" style={{ color: "var(--color-ink-4)" }}>{otherUser.email}</p>
@@ -110,13 +110,13 @@ export default function RightPanel({ conversation: conv, currentUser, onClose }:
                 return (
                   <div key={p._id ?? u?._id} className="flex items-center gap-3 px-4 py-1.5">
                     <img
-                      src={u?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u?.fullName || "U")}&background=e3e8f0&color=0068FF&bold=true&size=32`}
+                      src={u?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u?.name || "U")}&background=e3e8f0&color=0068FF&bold=true&size=32`}
                       className="w-8 h-8 rounded-full object-cover shrink-0"
-                      alt={u?.fullName}
+                      alt={u?.name}
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate" style={{ color: "var(--color-ink)" }}>
-                        {u?.fullName} {isSelf && <span style={{ color: "var(--color-ink-4)" }}>(Bạn)</span>}
+                        {u?.name} {isSelf && <span style={{ color: "var(--color-ink-4)" }}>(Bạn)</span>}
                       </p>
                       {p.role !== "member" && (
                         <span className="text-[10px] font-semibold uppercase"

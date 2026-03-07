@@ -9,7 +9,7 @@
 import { useState, useRef, useCallback } from "react";
 import type { User } from "@/types";
 import { conversationApi } from "@/lib/api";
-import { useChatStore } from "@/store";
+import { useConversationStore } from "@/store";
 
 interface Props {
   friends:  User[];
@@ -26,11 +26,11 @@ export default function CreateGroupModal({ friends, onClose, onCreate }: Props) 
   const [loading,  setLoading] = useState(false);
   const [error,    setError]   = useState("");
   const imgRef = useRef<HTMLInputElement>(null);
-  const addConv = useChatStore((s) => s.addConversation);
+  const addConv = useConversationStore((s) => s.addConversation);
 
   const filtered = friends.filter(
     (f) =>
-      f.fullName.toLowerCase().includes(query.toLowerCase()) &&
+      f.name.toLowerCase().includes(query.toLowerCase()) &&
       !selected.find((s) => s._id === f._id)
   );
 
@@ -132,8 +132,8 @@ export default function CreateGroupModal({ friends, onClose, onCreate }: Props) 
                     className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm"
                     style={{ background: "var(--color-brand-light)", color: "var(--color-brand)" }}
                   >
-                    <img src={u.avatar} alt={u.fullName} className="w-5 h-5 rounded-full object-cover" />
-                    <span className="font-medium">{u.fullName}</span>
+                    <img src={u.avatar} alt={u.name} className="w-5 h-5 rounded-full object-cover" />
+                    <span className="font-medium">{u.name}</span>
                     <button onClick={() => toggle(u)} className="opacity-60 hover:opacity-100">×</button>
                   </div>
                 ))}
@@ -154,7 +154,7 @@ export default function CreateGroupModal({ friends, onClose, onCreate }: Props) 
                   style={{ background: "var(--color-s2)" }}
                 />
               </div>
-              <div className="space-y-1 max-h-[200px] overflow-y-auto">
+              <div className="space-y-1 max-h-50 overflow-y-auto">
                 {filtered.map((f) => {
                   const checked = !!selected.find((s) => s._id === f._id);
                   return (
@@ -171,11 +171,11 @@ export default function CreateGroupModal({ friends, onClose, onCreate }: Props) 
                         className="w-4 h-4 rounded accent-[#0068FF]"
                       />
                       <img
-                        src={f.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(f.fullName)}&background=e3e8f0&color=0068FF&bold=true&size=32`}
+                        src={f.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(f.name)}&background=e3e8f0&color=0068FF&bold=true&size=32`}
                         className="w-8 h-8 rounded-full object-cover"
-                        alt={f.fullName}
+                        alt={f.name}
                       />
-                      <span className="text-sm font-medium">{f.fullName}</span>
+                      <span className="text-sm font-medium">{f.name}</span>
                     </label>
                   );
                 })}

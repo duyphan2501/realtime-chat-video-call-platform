@@ -49,6 +49,7 @@ export interface Message {
 export type ConversationType = "private" | "group";
 
 export interface Participant {
+  _id: string;
   user: User;
   nickname?: string;
   role: "member" | "admin" | "owner";

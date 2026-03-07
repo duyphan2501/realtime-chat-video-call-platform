@@ -12,7 +12,7 @@ interface FriendState {
   setFriends: (users: User[]) => void;
 }
 
-export const useUserStore = create<FriendState>((set) => ({
+export const useFriendStore = create<FriendState>((set) => ({
   friendRequests: [],
   friends: [],
 

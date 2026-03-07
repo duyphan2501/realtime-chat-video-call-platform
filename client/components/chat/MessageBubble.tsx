@@ -10,7 +10,7 @@
 "use client";
 import type { Message, User, Reaction } from "@/types";
 import { conversationApi } from "@/lib/api";
-import { useChatStore } from "@/store";
+import { useConversationStore, useMessageStore } from "@/store";
 
 const QUICK_EMOJIS = ["❤️", "😂", "😮", "😢", "😡", "👍"];
 
@@ -23,7 +23,7 @@ interface Props {
 }
 
 export default function MessageBubble({ message: m, isMe, showAvatar, convId, isGroup }: Props) {
-  const setReplyingTo = useChatStore((s) => s.setReplyingTo);
+  const setReplyingTo = useMessageStore((s) => s.setReplyingTo);
 
   if (m.isDeletedForAll) return <RevokedBubble isMe={isMe} />;
   if (m.type === "system") return <SystemMsg text={m.content || ""} />;
@@ -40,7 +40,7 @@ export default function MessageBubble({ message: m, isMe, showAvatar, convId, is
     try {
       // TODO ②: gọi API delete
       await conversationApi.deleteMessage(convId, m._id, true);
-      useChatStore.getState().markDeleted(m._id);
+      useMessageStore.getState().markDeleted(convId, m._id);
     } catch {}
   };
 
@@ -50,8 +50,8 @@ export default function MessageBubble({ message: m, isMe, showAvatar, convId, is
       <div className="w-8 h-8 shrink-0">
         {showAvatar && !isMe && (
           <img
-            src={m.sender.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.sender.fullName)}&size=32&background=e3e8f0&color=0068FF&bold=true`}
-            alt={m.sender.fullName}
+            src={m.sender.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.sender.name)}&size=32&background=e3e8f0&color=0068FF&bold=true`}
+            alt={m.sender.name}
             className="w-8 h-8 rounded-full object-cover"
           />
         )}
@@ -61,7 +61,7 @@ export default function MessageBubble({ message: m, isMe, showAvatar, convId, is
         {/* Sender name in group */}
         {isGroup && !isMe && showAvatar && (
           <span className="text-xs font-semibold mb-1 px-1" style={{ color: "var(--color-brand)" }}>
-            {m.sender.fullName}
+            {m.sender.name}
           </span>
         )}
 

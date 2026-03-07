@@ -8,8 +8,7 @@
    ═══════════════════════════════════════════════════════════ */
 "use client";
 import { useState, useRef, useCallback } from "react";
-import type { Message } from "@/types";
-import { useChatStore } from "@/store";
+import { useMessageStore } from "@/store";
 import { useTyping } from "@/hooks/useTyping";
 
 interface Props {
@@ -28,8 +27,8 @@ export default function ChatInput({ convId, onSend, disabled }: Props) {
   const fileRef     = useRef<HTMLInputElement>(null);
 
   const { startTyping, stopTyping } = useTyping(convId); // TODO ②
-  const replyingTo  = useChatStore((s) => s.replyingTo);
-  const setReplyTo  = useChatStore((s) => s.setReplyingTo);
+  const replyingTo  = useMessageStore((s) => s.replyingTo);
+  const setReplyTo  = useMessageStore((s) => s.setReplyingTo);
 
   const handleInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
@@ -70,7 +69,7 @@ export default function ChatInput({ convId, onSend, disabled }: Props) {
           <div className="w-0.5 h-8 rounded-full shrink-0" style={{ background: "var(--color-brand)" }} />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold" style={{ color: "var(--color-brand)" }}>
-              {replyingTo.sender.fullName}
+              {replyingTo.sender.name}
             </p>
             <p className="text-xs truncate" style={{ color: "var(--color-ink-3)" }}>
               {replyingTo.content || "Tệp đính kèm"}

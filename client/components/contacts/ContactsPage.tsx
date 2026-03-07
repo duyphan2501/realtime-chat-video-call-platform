@@ -12,7 +12,7 @@
 import { useState, useEffect } from "react";
 import type { User } from "@/types";
 import { userApi } from "@/lib/api";
-import { useChatStore } from "@/store";
+import { useFriendStore } from "@/store";
 
 type Tab = "friends" | "requests" | "search";
 
@@ -27,8 +27,8 @@ export default function ContactsPage({ currentUser, friends, onOpenChat }: Props
   const [query,    setQuery]    = useState("");
   const [results,  setResults]  = useState<User[]>([]);
   const [searching,setSearching]= useState(false);
-  const friendRequests = useChatStore((s) => s.friendRequests);
-  const removeFriendReq = useChatStore((s) => s.removeFriendRequest);
+  const friendRequests = useFriendStore((s) => s.friendRequests);
+  const removeFriendReq = useFriendStore((s) => s.removeFriendRequest);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -212,9 +212,9 @@ function UserCard({ user: u, actions }: { user: User; actions: Action[] }) {
     >
       <div className="relative shrink-0">
         <img
-          src={u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.fullName)}&background=e3e8f0&color=0068FF&bold=true&size=44`}
+          src={u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=e3e8f0&color=0068FF&bold=true&size=44`}
           className="w-11 h-11 rounded-full object-cover"
-          alt={u.fullName}
+          alt={u.name}
         />
         {u.isOnline && (
           <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white"
@@ -222,7 +222,7 @@ function UserCard({ user: u, actions }: { user: User; actions: Action[] }) {
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm truncate" style={{ color: "var(--color-ink)" }}>{u.fullName}</p>
+        <p className="font-semibold text-sm truncate" style={{ color: "var(--color-ink)" }}>{u.name}</p>
         <p className="text-xs truncate" style={{ color: "var(--color-ink-4)" }}>{u.email}</p>
       </div>
       <div className="flex gap-2 shrink-0">
