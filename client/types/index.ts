@@ -4,7 +4,7 @@
 
 export interface User {
   _id: string;
-  name: string;   
+  name: string;
   email: string;
   avatar: string;
   phone?: string;
@@ -15,7 +15,14 @@ export interface User {
   friendStatus?: "friend" | "sent" | "received" | "none";
 }
 
-export type MessageType = "text" | "image" | "file" | "video" | "audio" | "system" | "call";
+export type MessageType =
+  | "text"
+  | "image"
+  | "file"
+  | "call"
+  | "system"
+  | "call"
+  | "video";
 
 export interface Attachment {
   url: string;
@@ -75,8 +82,15 @@ export interface Conversation {
   createdAt: string;
 }
 
-export type CallType   = "audio" | "video";
-export type CallStatus = "idle" | "calling" | "ringing" | "connected" | "ended";
+export type CallType = "audio" | "video";
+export type CallStatus =
+  | "idle"
+  | "calling"
+  | "ringing"
+  | "connected"
+  | "ended"
+  | "missed"
+  | "rejected";
 
 export interface IncomingCall {
   from: User;

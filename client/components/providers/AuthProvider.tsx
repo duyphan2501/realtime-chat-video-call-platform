@@ -23,9 +23,9 @@ export default function AuthProvider({
   const isAuthRoute = pathname?.startsWith("/auth");
   useEffect(() => {
     const initAuth = async () => {
-      if (isAuthRoute || !isHydrated || user) return;
-      setIsLoading(true);
       try {
+        if (isAuthRoute || !isHydrated || user) return;
+        setIsLoading(true);
         await getMe();
       } catch (error) {
         console.error("Auth init failed", error);

@@ -89,4 +89,12 @@ const refreshTokenService = async (token) => {
   };
 };
 
-export { loginService, googleLoginService, refreshTokenService };
+const getUserById = async (id) => {
+  const user = await UserModel.findOne({ _id: id, status: "active" });
+  if (!user)
+    throw createHttpError.NotFound("User does not exist or is inactive");
+
+  return user;
+};
+
+export { loginService, googleLoginService, refreshTokenService, getUserById };

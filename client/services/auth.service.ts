@@ -45,7 +45,7 @@ export const useAuthService = () => {
   const getMeMutation = useMutation({
     mutationFn: () => api.auth.getMe(),
     onSuccess: (res) => setAuth(res.data.user, res.data.accessToken),
-    onError: () => setSessionExpired(true)
+    onError: () => setSessionExpired(true),
   });
 
   const logoutMutation = useMutation({

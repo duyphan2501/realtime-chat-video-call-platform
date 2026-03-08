@@ -79,7 +79,7 @@ export default function CreateGroupModal({ friends, onClose, onCreate }: Props) 
         className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
       >
         <div
-          className="relative w-full max-w-[460px] max-h-[85vh] flex flex-col rounded-3xl animate-scale-in pointer-events-auto overflow-hidden"
+          className="relative w-full max-w-115 max-h-[85vh] flex flex-col rounded-3xl animate-scale-in pointer-events-auto overflow-hidden"
           style={{ background: "var(--color-surface)", boxShadow: "var(--shadow-lg)" }}
         >
           {/* Header */}

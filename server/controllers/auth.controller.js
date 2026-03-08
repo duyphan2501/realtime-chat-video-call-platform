@@ -1,11 +1,12 @@
-
 import { generateAccessTokenAndSetCookies } from "../helpers/auth.helper.js";
 import {
+  getUserById,
   googleLoginService,
   loginService,
   refreshTokenService,
 } from "../services/auth.service.js";
 import createHttpError from "http-errors";
+import { filterFieldUser } from "../utils/filter.util.js";
 
 const login = async (req, res, next) => {
   try {
@@ -60,9 +61,13 @@ const googleLogin = async (req, res, next) => {
 
 const getMe = async (req, res, next) => {
   try {
-    const user = req.user;
+    const userId = req.user.userId;
+    if (!userId) throw createHttpError.BadRequest("Userid is missing");
+
+    const user = await getUserById(userId);
     const accessToken = req.cookies.accessToken;
-    return res.status(200).json({ user, accessToken });
+
+    return res.status(200).json({ user: filterFieldUser(user), accessToken });
   } catch (error) {
     next(error);
   }

@@ -1,13 +1,14 @@
 import { authAPI } from "@/API/authAPI";
 import { axiosPublic } from "@/API/axiosIntance";
+import { User } from "@/types";
 import { create } from "zustand";
 
 interface AuthState {
-  user: any | null;
+  user: User | null;
   accessToken: string | null;
   isSessionExpired: boolean;
   setSessionExpired: (status: boolean) => void;
-  setAuth: (user: any, token: string | null) => void;
+  setAuth: (user: User, token: string | null) => void;
   handleRefreshToken: () => Promise<string>;
   clearAuth: () => void;
 }

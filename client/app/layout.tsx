@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 import { ContextProvider } from "@/context/MyContext";
 import QueryProvider from "@/components/providers/QueryProvider";
 import AuthProvider from "@/components/providers/AuthProvider";
+import Sidebar from "@/components/layout/Sidebar";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -53,7 +54,7 @@ export default function RootLayout({
       >
         <QueryProvider>
           <ContextProvider>
-            <AuthProvider>{children}</AuthProvider>
+            {children}
             <Toaster position="top-center" reverseOrder={false} />
           </ContextProvider>
         </QueryProvider>
