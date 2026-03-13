@@ -16,7 +16,6 @@ import ConversationList from "@/components/chat/ConversationList";
 import ChatWindow from "@/components/chat/ChatWindow";
 import ContactsPage from "@/components/contacts/ContactsPage";
 import CreateGroupModal from "@/components/chat/CreateGroupModal";
-import VideoCallModal from "@/components/call/VideoCallModal";
 import { useAuthStore, useCallStore, useConversationStore, useFriendStore } from "@/store";
 
 export default function ChatPage() {
@@ -140,7 +139,6 @@ export default function ChatPage() {
         />
       )}
 
-      <VideoCallModal currentUser={currentUser!} />
     </div>
   );
 }

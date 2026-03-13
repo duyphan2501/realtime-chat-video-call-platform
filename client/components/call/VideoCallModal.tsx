@@ -10,15 +10,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import type { User } from "@/types";
-import { useCallStore } from "@/store";
+import { useAuthStore, useCallStore } from "@/store";
 import { getSocket } from "@/hooks";
 import { useWebRTC } from "@/hooks";
 
-interface Props {
-  currentUser: User;
-}
-
-export default function VideoCallModal({ currentUser }: Props) {
+export default function VideoCallModal() {
   const {
     status,
     callType,
@@ -29,28 +25,30 @@ export default function VideoCallModal({ currentUser }: Props) {
     isCamOff,
     reset,
   } = useCallStore();
+  const currentUser = useAuthStore((s) => s.user);
+  if (!currentUser) return null;
   const localRef = useRef<HTMLVideoElement>(null);
   const remoteRef = useRef<HTMLVideoElement>(null);
   const { startCall, endCall } = useWebRTC(localRef, remoteRef);
   const { toggleMute, toggleCam } = useCallStore();
   const [elapsed, setElapsed] = useState(0);
 
-  /* ── Duration timer ── */
-  useEffect(() => {
-    if (status !== "connected") {
-      setElapsed(0);
-      return;
-    }
-    const id = setInterval(() => setElapsed((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, [status]);
+  // /* ── Duration timer ── */
+  // useEffect(() => {
+  //   if (status !== "connected") {
+  //     setElapsed(0);
+  //     return;
+  //   }
+  //   const id = setInterval(() => setElapsed((n) => n + 1), 1000);
+  //   return () => clearInterval(id);
+  // }, [status]);
 
-  /* ── Start WebRTC when connected ──────────────
-     TODO ②: startCall() cần peerSocketId của bên kia */
-  useEffect(() => {
-    if (status === "connected" && peerSocketId && callType)
-      startCall(peerSocketId, callType);
-  }, [status, peerSocketId, callType, startCall]);
+  // /* ── Start WebRTC when connected ──────────────
+  //    TODO ②: startCall() cần peerSocketId của bên kia */
+  // useEffect(() => {
+  //   if (status === "connected" && peerSocketId && callType)
+  //     startCall(peerSocketId, callType);
+  // }, [status, peerSocketId, callType, startCall]);
 
   const fmt = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -243,9 +241,7 @@ export default function VideoCallModal({ currentUser }: Props) {
         {/* End call — TODO ③ */}
         <div className="flex flex-col items-center gap-1">
           <button
-            onClick={() =>
-              endCall(peerSocketId ?? undefined)
-            }
+            onClick={() => endCall(peerSocketId ?? undefined)}
             className="w-16 h-16 rounded-full flex items-center justify-center transition-all active:scale-95"
             style={{ background: "var(--color-danger)" }}
           >

@@ -23,7 +23,7 @@ interface CallStore {
 }
 
 export const useCallStore = create<CallStore>((set) => ({
-  status: "idle",
+  status: "ringing",
   callType: null,
   incoming: null,
   peerSocketId: null,

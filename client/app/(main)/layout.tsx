@@ -1,3 +1,4 @@
+import IncomingCallPopup from "@/components/call/IcomingCallPopup";
 import Sidebar from "@/components/layout/Sidebar";
 import AuthProvider from "@/components/providers/AuthProvider";
 
@@ -11,6 +12,7 @@ export default function MainLayout({
       <div className="flex">
         <Sidebar />
         <main className="flex-1">{children}</main>
+        <IncomingCallPopup />
       </div>
     </AuthProvider>
   );

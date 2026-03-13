@@ -88,6 +88,7 @@ export type CallStatus =
   | "calling"
   | "ringing"
   | "connected"
+  | "accepted"
   | "ended"
   | "missed"
   | "rejected";

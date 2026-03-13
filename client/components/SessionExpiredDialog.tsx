@@ -19,7 +19,7 @@ export function SessionExpiredDialog({ isAuthRoute = false }) {
   return (
     <div className="fixed inset-0 z-9999 flex items-center justify-center bg-background/80 backdrop-blur-sm px-4 font-sans">
       {/* Container chính của Dialog */}
-      <div className="w-full max-w-110 bg-[#181829] border border-[#282839] rounded-2xl shadow-2xl p-8 flex flex-col items-center text-center">
+      <div className="w-full max-w-110 bg-[#181829] border border-gray rounded-2xl shadow-2xl p-8 flex flex-col items-center text-center">
         {/* Icon Lock Clock */}
         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
           <div className="w-14 h-14 bg-primary/20 rounded-full flex items-center justify-center">
@@ -48,7 +48,7 @@ export function SessionExpiredDialog({ isAuthRoute = false }) {
         </div>
 
         {/* Footer Note */}
-        <div className="mt-8 pt-6 border-t border-[#282839] w-full">
+        <div className="mt-8 pt-6 border-t border-gray w-full">
           <p className="text-xs text-[#9494b8]/60 uppercase tracking-widest font-semibold">
             Secure Session Management
           </p>
