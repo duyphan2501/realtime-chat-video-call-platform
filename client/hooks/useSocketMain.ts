@@ -8,39 +8,43 @@ let _socket: Socket | null = null;
 export function useSocketMain() {
   const { setConnected, setSocket } = useSocketStore();
 
-  const connect = useCallback((token: string) => {
-    // Nếu đã có kết nối và đang hoạt động thì không tạo mới
-    if (_socket?.connected) return _socket;
+  const connect = useCallback(
+    (token: string) => {
+      // Nếu đã có kết nối và đang hoạt động thì không tạo mới
+      if (_socket?.connected) return _socket;
 
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000";
+      const socketUrl =
+        process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:8000";
 
-    _socket = io(socketUrl, {
-      auth: { token },
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 2000,
-    });
+      _socket = io(socketUrl, {
+        auth: { token },
+        transports: ["websocket"],
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+      });
 
-    // Lắng nghe sự kiện kết nối cơ bản
-    _socket.on("connect", () => {
-      setConnected(true);
-      setSocket(_socket);
-      console.log("🟢 Socket connected:", _socket?.id);
-    });
+      // Lắng nghe sự kiện kết nối cơ bản
+      _socket.on("connect", () => {
+        setConnected(true);
+        setSocket(_socket);
+        console.log("🟢 Socket connected:", _socket?.id);
+      });
 
-    _socket.on("disconnect", (reason) => {
-      setConnected(false);
-      console.log("🔴 Socket disconnected:", reason);
-    });
+      _socket.on("disconnect", (reason) => {
+        setConnected(false);
+        console.log("🔴 Socket disconnected:", reason);
+      });
 
-    _socket.on("connect_error", (err) => {
-      console.error("🟠 Socket connection error:", err.message);
-      setConnected(false);
-    });
+      _socket.on("connect_error", (err) => {
+        console.error("🟠 Socket connection error:", err.message);
+        setConnected(false);
+      });
 
-    return _socket;
-  }, [setConnected, setSocket]);
+      return _socket;
+    },
+    [setConnected, setSocket],
+  );
 
   const disconnect = useCallback(() => {
     if (_socket) {

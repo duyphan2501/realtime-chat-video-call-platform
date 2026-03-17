@@ -99,3 +99,10 @@ export interface IncomingCall {
   callType: CallType;
   callerSocketId: string;
 }
+
+
+export interface TypingUser {
+  _id: string;
+  fullName: string;
+  avatar: string;
+}

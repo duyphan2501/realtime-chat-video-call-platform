@@ -10,6 +10,7 @@
 import { useState } from "react";
 import type { Conversation, User } from "@/types";
 import {
+  selectIsOnline,
   useConversationStore,
   useMessageStore,
   usePresenceStore,
@@ -34,7 +35,6 @@ export default function ConversationList({
 }: Props) {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"direct" | "group" | "unread">("direct");
-  const onlineUsers = usePresenceStore((s) => s.onlineUsers);
   const setActiveId = useConversationStore((s) => s.setActiveId);
   const filtered = conversations.filter((c) => {
     const name = getConvName(c, currentUser);
@@ -118,17 +118,16 @@ export default function ConversationList({
           </div>
         )}
         {filtered.map((c) => {
-          const isOnline =
-            c.type === "private"
-              ? onlineUsers.has(getOtherId(c, currentUser))
-              : false;
+          const isUserOnline = usePresenceStore(
+            selectIsOnline(getOtherId(c, currentUser)),
+          );
           const isActive = c._id === activeId;
           return (
             <ConversationItem
               key={c._id}
               conv={c}
               currentUser={currentUser}
-              isOnline={isOnline}
+              isOnline={isUserOnline}
               isActive={isActive}
               onSelect={handleConvItemSelect}
             />

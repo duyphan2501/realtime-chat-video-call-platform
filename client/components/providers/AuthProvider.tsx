@@ -7,6 +7,8 @@ import { usePathname } from "next/navigation";
 import { useMyContext } from "@/context/MyContext";
 import Loading from "../loadings/Loading";
 import { useAuthStore } from "@/store";
+import { useSocketEvents, useSocketMain } from "@/hooks";
+import { usePresenceHandlers } from "@/hooks/handlers/usePresenceHandlers";
 
 export default function AuthProvider({
   children,
@@ -18,6 +20,8 @@ export default function AuthProvider({
   const pathname = usePathname();
   const { isHydrated } = useMyContext();
   const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.accessToken);
+  const { connect, disconnect } = useSocketMain();
 
   // Danh sách các route không cần check auth
   const isAuthRoute = pathname?.startsWith("/auth");
@@ -37,6 +41,17 @@ export default function AuthProvider({
     initAuth();
   }, [pathname, isHydrated]);
 
+  useEffect(() => {
+    if (token && user) {
+      connect(token);
+    }
+    return () => {
+      disconnect();
+    };
+  }, [token, user, connect, disconnect]);
+
+  useSocketEvents();
+  
   if (isLoading) return <Loading />;
 
   return (

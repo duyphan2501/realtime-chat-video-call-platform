@@ -2,28 +2,39 @@ import { useEffect } from "react";
 import { usePresenceStore } from "@/store";
 import type { Socket } from "socket.io-client";
 
+import { TypingUser } from "@/types";
+
 export function usePresenceHandlers(socket: Socket | null) {
   useEffect(() => {
     if (!socket) return;
 
-    const presence = usePresenceStore.getState();
+    const onOnline = ({ userId }: { userId: string }) =>
+      usePresenceStore.getState().setOnline(userId, true);
 
-    socket.on("presence:online", ({ userId }) => presence.setOnline(userId, true));
-    socket.on("presence:offline", ({ userId }) => presence.setOnline(userId, false));
-    
-    socket.on("typing:start", ({ conversationId, user }) => 
-      presence.setTyping(conversationId, user)
-    );
-    
-    socket.on("typing:stop", ({ conversationId, userId }) => 
-      presence.clearTyping(conversationId, userId)
-    );
+    const onOffline = ({ userId }: { userId: string }) =>
+      usePresenceStore.getState().setOnline(userId, false);
+
+    const onTypingStart = ({ conversationId, user }: {conversationId: string, user: TypingUser}) =>
+      usePresenceStore.getState().setTyping(conversationId, user);
+
+    const onTypingStop = ({ conversationId, userId }: {conversationId: string, userId: string}) =>
+      usePresenceStore.getState().clearTyping(conversationId, userId);
+
+    const onOnlineUsers = ({ userIds }: { userIds: string[] }) =>
+      usePresenceStore.getState().setOnlineUsers(userIds);
+
+    socket.on("presence:online", onOnline);
+    socket.on("presence:offline", onOffline);
+    socket.on("presence:online_users", onOnlineUsers);
+    socket.on("typing:start", onTypingStart);
+    socket.on("typing:stop", onTypingStop);
 
     return () => {
-      socket.off("presence:online");
-      socket.off("presence:offline");
-      socket.off("typing:start");
-      socket.off("typing:stop");
+      socket.off("presence:online", onOnline);
+      socket.off("presence:offline", onOffline);
+      socket.off("presence:online_users", onOnlineUsers);
+      socket.off("typing:start", onTypingStart);
+      socket.off("typing:stop", onTypingStop);
     };
   }, [socket]);
 }

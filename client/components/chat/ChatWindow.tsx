@@ -52,8 +52,6 @@ export default function ChatWindow({
   const typingUsers = usePresenceStore(
     useShallow((s) => s.typingUsers[conv._id] || []),
   );
-  console.log(messages);
-
   const setMessages = useMessageStore((s) => s.setMessages);
   const addMessage = useMessageStore((s) => s.addMessage);
 
@@ -236,7 +234,6 @@ export default function ChatWindow({
 
           {messages.map((msg, i) => {
             const isMe = msg.sender._id === currentUser._id;
-            console.log(msg.sender._id, currentUser._id)
             const prev = messages[i - 1];
             const isSameSender = prev && prev.sender._id === msg.sender._id;
             const showDate = !prev || !sameDay(prev.createdAt, msg.createdAt);
