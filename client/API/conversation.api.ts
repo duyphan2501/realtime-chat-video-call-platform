@@ -1,0 +1,18 @@
+import { AxiosInstance } from "axios";
+
+export const conversationAPI = (axiosPrivate: AxiosInstance) => ({
+  getConversations: ({
+    type,
+    cursor,
+    lastId,
+    limit = 10,
+  }: {
+    type: string;
+    cursor: Date | null;
+    lastId: string | null;
+    limit: number;
+  }) =>
+    axiosPrivate.get(
+      `/conversations?type=${type}&cursor=${cursor}&lastId=${lastId}&limit=${limit}`,
+    ),
+});

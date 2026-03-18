@@ -53,7 +53,7 @@ export interface Message {
   updatedAt: string;
 }
 
-export type ConversationType = "private" | "group";
+export type ConversationType = "direct" | "group";
 
 export interface Participant {
   _id: string;
@@ -76,7 +76,8 @@ export interface Conversation {
     sender: User;
     type: MessageType;
     createdAt: string;
-  };
+    deletedForEveryone?: boolean,
+  }; 
   unreadCount: number;
   updatedAt: string;
   createdAt: string;

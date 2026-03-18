@@ -7,7 +7,7 @@
    ② Tạo nhóm: mở CreateGroupModal
    ═══════════════════════════════════════════════════════════ */
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Conversation, User } from "@/types";
 import {
   selectIsOnline,
@@ -19,6 +19,8 @@ import { getConvName, getOtherId } from "@/utils/chat.utils";
 import ConversationItem from "./ConversationItem";
 import { Search } from "lucide-react";
 import IconBtn from "../IconBtn";
+import { useConversationService } from "@/services";
+import ConversationSkeleton from "../loadings/ConversationSkeleton";
 
 interface Props {
   conversations: Conversation[];
@@ -34,16 +36,27 @@ export default function ConversationList({
   onCreateGroup,
 }: Props) {
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<"direct" | "group" | "unread">("direct");
+  const [tab, setTab] = useState<"all" | "group" | "unread">("all");
+
   const setActiveId = useConversationStore((s) => s.setActiveId);
-  const filtered = conversations.filter((c) => {
-    const name = getConvName(c, currentUser);
-    return name.toLowerCase().includes(query.toLowerCase());
-  });
 
   const handleConvItemSelect = (conId: string) => {
     setActiveId(conId);
   };
+
+  const { getConversations, isFetchingConvs } = useConversationService();
+  const convCursor = useConversationStore((s) => s.convCursor);
+
+  useEffect(() => {
+    if (tab !== "unread") {
+      getConversations({
+        type: tab,
+        limit: 10,
+        cursor: convCursor?.cursor,
+        lastId: convCursor?.lastId,
+      });
+    }
+  }, [tab]);
 
   return (
     <div className="flex flex-col shrink-0 border-r w-[320px] border-gray-800">
@@ -88,7 +101,7 @@ export default function ConversationList({
 
         {/* Tabs */}
         <div className="flex gap-3 mt-3">
-          {(["direct", "group", "unread"] as const).map((t) => (
+          {(["all", "group", "unread"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -109,30 +122,36 @@ export default function ConversationList({
 
       {/* List */}
       <div className="flex-1 overflow-y-auto border-t border-gray-800 pt-2">
-        {filtered.length === 0 && (
+        {isFetchingConvs ? (
+          <>
+            {[...Array(6)].map((_, i) => (
+              <ConversationSkeleton key={i} />
+            ))}
+          </>
+        ) : conversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 gap-2">
             <span className="text-2xl">💬</span>
             <p className="text-sm" style={{ color: "var(--color-ink-4)" }}>
               There was no conversation
             </p>
           </div>
+        ) : (
+          <>
+            {conversations.map((c) => {
+              
+              const isActive = c._id === activeId;
+              return (
+                <ConversationItem
+                  key={c._id}
+                  conv={c}
+                  currentUser={currentUser}
+                  isActive={isActive}
+                  onSelect={handleConvItemSelect}
+                />
+              );
+            })}
+          </>
         )}
-        {filtered.map((c) => {
-          const isUserOnline = usePresenceStore(
-            selectIsOnline(getOtherId(c, currentUser)),
-          );
-          const isActive = c._id === activeId;
-          return (
-            <ConversationItem
-              key={c._id}
-              conv={c}
-              currentUser={currentUser}
-              isOnline={isUserOnline}
-              isActive={isActive}
-              onSelect={handleConvItemSelect}
-            />
-          );
-        })}
       </div>
     </div>
   );

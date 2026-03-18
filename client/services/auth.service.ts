@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAPI } from "@/hooks/useAPI";
+import { useAPI } from "@/API/useAPI";
 import { useAuthStore } from "@/store";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";

@@ -1,4 +1,8 @@
-import { useConversationStore, usePresenceStore } from "@/store";
+import {
+  selectIsOnline,
+  useConversationStore,
+  usePresenceStore,
+} from "@/store";
 import { Conversation, User } from "@/types";
 import {
   fmtTime,
@@ -11,21 +15,21 @@ import {
 interface ConversationItemProps {
   conv: Conversation;
   currentUser: User | null;
-  isOnline: boolean;
   isActive: boolean;
-  onSelect: (conId: string) => void
+  onSelect: (conId: string) => void;
 }
 
 const ConversationItem = ({
   conv,
   currentUser,
-  isOnline,
   isActive,
   onSelect,
 }: ConversationItemProps) => {
   const name = getConvName(conv, currentUser);
   const avatar = getConvAvatar(conv, currentUser);
-
+  const isOnline = usePresenceStore(
+    selectIsOnline(getOtherId(conv, currentUser)),
+  );
   return (
     <div
       key={conv._id}

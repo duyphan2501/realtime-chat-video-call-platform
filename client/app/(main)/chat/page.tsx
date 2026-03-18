@@ -20,7 +20,6 @@ import { useAuthStore, useCallStore, useConversationStore, useFriendStore } from
 
 export default function ChatPage() {
   const [friends, setFriends] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const currentUser = useAuthStore(s => s.user)
 
@@ -37,44 +36,6 @@ export default function ChatPage() {
   const handleStartCall = () => {};
 
   const activeConv = conversations.find((c) => c._id === activeId);
-
-  if (loading) {
-    return (
-      <div
-        className="flex h-screen items-center justify-center"
-        style={{ background: "var(--color-bg)" }}
-      >
-        <div className="flex flex-col items-center gap-4">
-          <div
-            className="w-14 h-14 rounded-3xl flex items-center justify-center"
-            style={{ background: "var(--color-brand)" }}
-          >
-            <svg
-              className="w-7 h-7 text-white"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v7a2 2 0 01-2 2H9l-4 3v-3H4a2 2 0 01-2-2V5z" />
-            </svg>
-          </div>
-          <div className="flex gap-1.5">
-            <span
-              className="dot-1 w-2 h-2 rounded-full"
-              style={{ background: "var(--color-brand)" }}
-            />
-            <span
-              className="dot-2 w-2 h-2 rounded-full"
-              style={{ background: "var(--color-brand)" }}
-            />
-            <span
-              className="dot-3 w-2 h-2 rounded-full"
-              style={{ background: "var(--color-brand)" }}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen overflow-hidden">

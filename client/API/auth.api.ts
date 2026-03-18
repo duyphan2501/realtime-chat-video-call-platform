@@ -1,5 +1,5 @@
-import { axiosPublic } from "@/API/axiosIntance";
 import { AxiosInstance } from "axios";
+import { axiosPublic } from "@/API/axiosIntance";
 
 export const authAPI = (axiosPrivate: AxiosInstance) => ({
   login: (data: any) => axiosPublic.post("/auth/login", data),

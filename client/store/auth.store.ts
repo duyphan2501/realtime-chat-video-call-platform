@@ -1,4 +1,4 @@
-import { authAPI } from "@/API/authAPI";
+import { authAPI } from "@/API/auth.api";
 import { axiosPublic } from "@/API/axiosIntance";
 import { User } from "@/types";
 import { create } from "zustand";
@@ -27,7 +27,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   handleRefreshToken: async () => {
     const api = authAPI(axiosPublic);
     const { data } = await api.refreshToken();
-    get().setAuth(data.user, data.accessToken)
+    get().setAuth(data.user, data.accessToken);
     return data.accessToken;
   },
 
