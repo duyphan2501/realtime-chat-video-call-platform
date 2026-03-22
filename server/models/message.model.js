@@ -46,10 +46,15 @@ const messageSchema = new mongoose.Schema(
     attachments: { type: [attachmentSchema], default: [] },
     reactions: { type: [reactionSchema], default: [] },
     replyTo: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
+    seenBy: [{ userId: String, seenAt: Date }],
     deletedFor: {
       type: [mongoose.Schema.Types.ObjectId],
       ref: "User",
       default: [],
+    },
+    callData: {
+      status: String,
+      duration: Number,
     },
     deletedForEveryone: { type: Boolean, default: false },
   },

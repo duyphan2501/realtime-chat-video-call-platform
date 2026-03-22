@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   VideoIcon,
   PhoneOffIcon,
   VolumeXIcon,
   BanIcon,
   MessageSquareIcon,
+  Loader2,
 } from "lucide-react";
-import { useCallStore } from "@/store";
+import { useCallStore, useConversationStore, useSocketStore } from "@/store";
+import { useRingCountdown, useWebRTC } from "@/hooks";
 
 export type CallStatus =
   | "idle"
@@ -20,20 +22,114 @@ export type CallStatus =
   | "missed"
   | "rejected";
 
+// Thời gian chờ trước khi tự động từ chối (giây)
+const RING_TIMEOUT_SECONDS = 30;
+
 export default function IncomingCallPopup() {
-  const status = useCallStore((s) => s.status);
-  const setStatus = useCallStore((s) => s.setStatus);
+  const { status, setStatus, incoming } = useCallStore.getState();
+  const { acceptCall, endCall } = useWebRTC();
+  const socket = useSocketStore((s) => s.socket);
+  const activeId = useConversationStore((s) => s.activeId);
+
+  // Local state: track permission-requesting phase
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [permissionError, setPermissionError] = useState<string | null>(null);
+
+  // Countdown timer state
+  const timeLeft = useRingCountdown(30);
+  const autoDeclineFiredRef = useRef(false);
+
+  // Tính phần trăm còn lại cho vòng tròn SVG
+  const progress = timeLeft / RING_TIMEOUT_SECONDS; // 1 → 0
+  const radius = 58; // bán kính vòng tròn SVG (px)
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - progress);
+
+  // Màu sắc thay đổi theo thời gian còn lại
+  const ringColor =
+    timeLeft > 15
+      ? "#6366f1" // indigo
+      : timeLeft > 8
+        ? "#f59e0b" // amber
+        : "#ef4444"; // red
+
+  const handleAccept = async () => {
+    if (status !== "ringing" || isAccepting) return;
+
+    setIsAccepting(true);
+    setPermissionError(null);
+
+    try {
+      await acceptCall();
+    } catch (err: any) {
+      const isPermissionDenied =
+        err?.name === "NotAllowedError" ||
+        err?.name === "PermissionDeniedError";
+
+      setPermissionError(
+        isPermissionDenied
+          ? "Camera/microphone access was denied. Please allow access and try again."
+          : "Could not access camera or microphone. Please check your devices.",
+      );
+      setIsAccepting(false);
+    }
+  };
+
+  const handleDecline = () => {
+    if (status !== "ringing") return;
+    const { peerUser, role } = useCallStore.getState();
+    socket?.emit("call:rejected", {
+      targetUserId: peerUser?._id,
+      ownerId: role !== "caller" ? peerUser?._id : null,
+      conversationId: activeId,
+      type: useCallStore.getState().callType,
+    });
+    useCallStore.getState().reset();
+  };
+
+  // Auto-decline khi hết thời gian
+  const handleAutoDecline = () => {
+    if (useCallStore.getState().status !== "ringing") return;
+    // const { peerUser } = useCallStore.getState();
+    // socket?.emit("call:rejected", {
+    //   targetUserId: peerUser?._id,
+    //   ownerId: useCallStore.getState().role !== "caller" ? peerUser?._id : null,
+    //   conversationId: activeId,
+    //   type: useCallStore.getState().callType,
+    //   status: "missed",
+    // });
+    // setStatus("missed");
+    useCallStore.getState().reset();
+  };
 
   useEffect(() => {
+    if (timeLeft === 0 && status === "ringing") handleAutoDecline();
+  }, [timeLeft]);
+
+  // Tách riêng: khi timeLeft về 0 thì trigger auto-decline SAU khi render xong
+  useEffect(() => {
+    if (timeLeft === 0 && !autoDeclineFiredRef.current) {
+      autoDeclineFiredRef.current = true;
+      handleAutoDecline();
+    }
+  }, [timeLeft]);
+
+  // Reset local state nếu popup đóng lại
+  useEffect(() => {
     if (status !== "ringing") {
-      const t = setTimeout(() => {
-        setStatus("idle");
-      }, 2000);
+      setIsAccepting(false);
+      setPermissionError(null);
+    }
+  }, [status]);
+
+  useEffect(() => {
+    if (["ended", "rejected", "missed"].includes(status)) {
+      const t = setTimeout(() => setStatus("idle"), 3000);
       return () => clearTimeout(t);
     }
   }, [status, setStatus]);
 
-  if (status === "idle") return null;
+  if (status !== "ringing") return null;
 
   const statusLabel: Partial<Record<CallStatus, string>> = {
     ringing: "Incoming Video Call...",
@@ -46,8 +142,8 @@ export default function IncomingCallPopup() {
   };
 
   const labelColor: Partial<Record<CallStatus, string>> = {
-    ringing: "text-[#2b2bee] animate-pulse",
-    calling: "text-[#2b2bee] animate-pulse",
+    ringing: "text-indigo-400 animate-pulse",
+    calling: "text-indigo-400 animate-pulse",
     accepted: "text-green-500 animate-pulse",
     connected: "text-green-500",
     rejected: "text-red-500",
@@ -56,120 +152,181 @@ export default function IncomingCallPopup() {
   };
 
   return (
-    <>
-      {/* Overlay */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div
-          className={`
-            w-full max-w-105
-            bg-[#101022]
-            border border-slate-800
-            rounded-2xl shadow-2xl overflow-hidden
-            transition-all duration-300
-            ${status !== "ringing" ? "opacity-70 scale-95" : "opacity-100 scale-100"}
-          `}
-        >
-          {/* Avatar section */}
-          <div className="flex justify-center pt-10">
-            <div className="relative size-32">
-              <>
-                <span className="absolute inset-0 rounded-full bg-primary/30 animate-ping [animation-duration:1.5s]" />
-                <span className="absolute inset-0 rounded-full scale-110 bg-primary/20" />
-                <span className="absolute inset-0 scale-125 rounded-full bg-primary/10 animate-ping [animation-duration:2s] [animation-delay:0.3s]" />
-              </>
-              {/* Avatar */}
-              <img
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuC24lfGzrs-a5tPV0Yyc8KL4I0fYxuR91eHoJMrML0eqC68UGHriJWwFtbwLOnUPnzN0TPIYLvUk7PePItGBPtQbUnnM2bcDq8yo2n28XH5EZ12yo2GiqYuPjzzCDT6m_Rsf5LnghmgBd3lQtiUNZ6TN6CchiZmGV1WypKKQYcN5UIINFKah-49MW_U0Px6DuGgVuimTuIxvusnrDEB6dpBEqz02zhLQ6ZXbauW9s3zMZAtH2uf7XjzuRn8X1j-bRzasSYqOJ3OtYaD"
-                alt="John Doe"
-                className="relative z-10 size-32 rounded-full object-cover border-4 border-[#111118] shadow-xl"
-              />
-              {/* Badge */}
-              <span className="absolute bottom-0 right-0 z-20 bg-primary text-white p-1.5 rounded-full border-2 border-[#111118]">
-                <VideoIcon size={14} />
-              </span>
-            </div>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm bg-[#111118] border border-white/6 rounded-[28px] shadow-2xl shadow-black/60 overflow-hidden">
+        {/* Avatar với countdown ring */}
+        <div className="flex justify-center pt-10">
+          <div className="relative size-28">
+            {/* Ping animations */}
+            <span className="absolute inset-0 rounded-full bg-indigo-500/20 animate-ping [animation-duration:1.5s]" />
+            <span className="absolute inset-0 scale-110 rounded-full bg-indigo-500/10" />
+            <span className="absolute inset-0 scale-125 rounded-full bg-indigo-500/5 animate-ping [animation-duration:2s] [animation-delay:0.3s]" />
 
-          {/* Info */}
-          <div className="flex flex-col items-center px-8 pt-6 pb-3">
-            <h3 className="text-2xl font-bold tracking-tight text-white">
-              John Doe
-            </h3>
-            <p
-              className={`font-medium mt-1 text-sm ${labelColor[status] ?? "text-slate-400"}`}
+            {/* SVG countdown ring — nằm phía trên avatar, bên ngoài viền */}
+            <svg
+              className="absolute -inset-2.5 z-20 size-[calc(100%+20px)] -rotate-90"
+              viewBox="0 0 136 136"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
             >
-              {statusLabel[status] ?? ""}
-            </p>
+              {/* Track */}
+              <circle
+                cx="68"
+                cy="68"
+                r={radius}
+                stroke="rgba(255,255,255,0.06)"
+                strokeWidth="3"
+              />
+              {/* Progress */}
+              <circle
+                cx="68"
+                cy="68"
+                r={radius}
+                stroke={ringColor}
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                style={{
+                  transition: "stroke-dashoffset 1s linear, stroke 0.5s ease",
+                }}
+              />
+            </svg>
+
+            <img
+              src={`${incoming?.from.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuC24lfGzrs-a5tPV0Yyc8KL4I0fYxuR91eHoJMrML0eqC68UGHriJWwFtbwLOnUPnzN0TPIYLvUk7PePItGBPtQbUnnM2bcDq8yo2n28XH5EZ12yo2GiqYuPjzzCDT6m_Rsf5LnghmgBd3lQtiUNZ6TN6CchiZmGV1WypKKQYcN5UIINFKah-49MW_U0Px6DuGgVuimTuIxvusnrDEB6dpBEqz02zhLQ6ZXbauW9s3zMZAtH2uf7XjzuRn8X1j-bRzasSYqOJ3OtYaD"}`}
+              alt={incoming?.from.name}
+              className="relative z-10 size-28 rounded-full object-cover border-4 border-[#111118] shadow-xl"
+            />
+            <span className="absolute bottom-0 right-0 z-20 bg-indigo-500 text-white p-1.5 rounded-full border-2 border-[#111118]">
+              <VideoIcon size={13} />
+            </span>
           </div>
+        </div>
 
-          {/* Decline / Accept */}
-          <div className="p-6">
-            <div className="flex gap-4">
-              <div className="flex-1 flex flex-col items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                <button
-                  onClick={() => status === "ringing" && setStatus("rejected")}
-                  disabled={status !== "ringing"}
-                  className="size-14 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <PhoneOffIcon size={26} />
-                </button>
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Decline
-                </span>
-              </div>
+        {/* Info */}
+        <div className="flex flex-col items-center px-8 pt-5 pb-2">
+          <h3 className="text-xl font-semibold tracking-tight text-white">
+            {incoming?.from.name}
+          </h3>
+          <p
+            className={`text-sm font-medium mt-1 ${labelColor[status] ?? "text-slate-400"}`}
+          >
+            {statusLabel[status] ?? ""}
+          </p>
 
-              <div className="flex-1 flex flex-col items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                <button
-                  onClick={() => status === "ringing" && setStatus("accepted")}
-                  disabled={status !== "ringing"}
-                  className="size-14 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500 hover:text-white transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <VideoIcon size={26} />
-                </button>
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Accept
-                </span>
-              </div>
-            </div>
+          {/* Countdown text */}
+          <p
+            className={`text-xs mt-1.5 font-mono tabular-nums transition-colors duration-500 ${
+              timeLeft > 15
+                ? "text-white/25"
+                : timeLeft > 8
+                  ? "text-amber-400/70"
+                  : "text-red-400/80 animate-pulse"
+            }`}
+          >
+            Auto-decline in {timeLeft}s
+          </p>
+        </div>
+
+        {/* Permission error banner */}
+        {permissionError && (
+          <div className="mx-6 mt-3 px-4 py-3 rounded-[14px] bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center leading-relaxed">
+            {permissionError}
           </div>
+        )}
 
-          {/* Quick message */}
-          <div className="px-6 pb-6 pt-0">
-            <div className="flex flex-col gap-3 p-4 rounded-xl bg-[#1c1c33] border border-gray">
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col">
-                  <p className="text-white text-sm font-bold">
-                    Can&apos;t talk right now?
-                  </p>
-                  <p className="text-slate-400 text-xs">
-                    Send a quick message instead
-                  </p>
-                </div>
-                <button
-                  onClick={() => status === "ringing" && setStatus("missed")}
-                  disabled={status !== "ringing"}
-                  className="bg-primary text-white text-xs font-bold py-2 px-3 rounded-lg hover:bg-[#2020cc] transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <MessageSquareIcon size={12} />
-                  Message
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="bg-[#18182e] py-3 px-6 border-t border-slate-800 flex justify-center gap-8">
-            <button className="text-slate-400 cursor-pointer hover:text-primary transition-colors flex items-center gap-1.5 text-xs">
-              <VolumeXIcon size={16} />
-              Mute
+        {/* Accept / Decline */}
+        <div className="flex gap-4 px-8 pt-5 pb-4">
+          {/* Decline */}
+          <div className="flex-1 flex flex-col items-center gap-2">
+            <button
+              onClick={handleDecline}
+              disabled={status !== "ringing" || isAccepting}
+              className="size-14 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <PhoneOffIcon size={24} />
             </button>
-            <button className="text-slate-400 cursor-pointer hover:text-primary transition-colors flex items-center gap-1.5 text-xs">
-              <BanIcon size={16} />
-              Ignore
+            <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">
+              Decline
+            </span>
+          </div>
+
+          {/* Accept */}
+          <div className="flex-1 flex flex-col items-center gap-2">
+            <button
+              onClick={handleAccept}
+              disabled={status !== "ringing" || isAccepting}
+              className="size-14 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center hover:bg-green-500 hover:text-white transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed relative"
+            >
+              {isAccepting ? (
+                <Loader2 size={22} className="animate-spin" />
+              ) : (
+                <VideoIcon size={24} />
+              )}
+            </button>
+            <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">
+              {isAccepting ? "Connecting…" : "Accept"}
+            </span>
+          </div>
+        </div>
+
+        {/* Permission hint — chỉ hiện khi đang xin quyền */}
+        {isAccepting && !permissionError && (
+          <div className="mx-6 mb-4 px-4 py-3 rounded-[14px] bg-indigo-500/8 border border-indigo-500/15 text-indigo-300/70 text-xs text-center leading-relaxed">
+            Allow camera & microphone access in your browser to continue
+          </div>
+        )}
+
+        {/* Quick message */}
+        <div className="px-6 pb-5">
+          <div className="flex items-center justify-between p-4 rounded-[18px] bg-white/4 border border-white/6">
+            <div>
+              <p className="text-white text-[13px] font-semibold">
+                Can't talk right now?
+              </p>
+              <p className="text-white/35 text-xs mt-0.5">
+                Send a quick message instead
+              </p>
+            </div>
+            <button
+              onClick={() => {}}
+              disabled={status !== "ringing" || isAccepting}
+              className="flex items-center gap-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-semibold py-2 px-3 rounded-[10px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <MessageSquareIcon size={12} />
+              Message
             </button>
           </div>
         </div>
+
+        {/* Footer */}
+        <div className="border-t border-white/6 py-3 px-6 flex justify-center gap-8">
+          {[
+            {
+              icon: <VolumeXIcon size={15} />,
+              label: "Mute",
+              handleClick: () => {},
+            },
+            {
+              icon: <BanIcon size={15} />,
+              label: "Ignore",
+              handleClick: () => {
+                useCallStore.getState().reset();
+              },
+            },
+          ].map(({ icon, label, handleClick }) => (
+            <button
+              key={label}
+              className="flex items-center gap-1.5 text-xs text-white/30 hover:text-indigo-400 transition-colors"
+              onClick={handleClick}
+            >
+              {icon}
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
-    </>
+    </div>
   );
 }

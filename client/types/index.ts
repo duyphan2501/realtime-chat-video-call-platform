@@ -5,11 +5,10 @@
 export interface User {
   _id: string;
   name: string;
-  email: string;
+  email?: string;
   avatar: string;
   phone?: string;
   bio?: string;
-  isOnline: boolean;
   lastSeen?: string;
   /** "friend" | "sent" | "received" | "none" — backend trả về */
   friendStatus?: "friend" | "sent" | "received" | "none";
@@ -19,9 +18,8 @@ export type MessageType =
   | "text"
   | "image"
   | "file"
-  | "call"
   | "system"
-  | "call"
+  | "audio"
   | "video";
 
 export interface Attachment {
@@ -76,8 +74,8 @@ export interface Conversation {
     sender: User;
     type: MessageType;
     createdAt: string;
-    deletedForEveryone?: boolean,
-  }; 
+    deletedForEveryone?: boolean;
+  };
   unreadCount: number;
   updatedAt: string;
   createdAt: string;
@@ -88,6 +86,7 @@ export type CallStatus =
   | "idle"
   | "calling"
   | "ringing"
+  | "connecting"
   | "connected"
   | "accepted"
   | "ended"
@@ -95,12 +94,9 @@ export type CallStatus =
   | "rejected";
 
 export interface IncomingCall {
-  from: User;
-  conversationId: string;
-  callType: CallType;
-  callerSocketId: string;
+  from: { _id: string; name: string; avatar: string };
+  offer: RTCSessionDescriptionInit;
 }
-
 
 export interface TypingUser {
   _id: string;

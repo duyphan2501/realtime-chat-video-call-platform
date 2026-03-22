@@ -8,11 +8,10 @@ export default function CallMessage({
   msg: Message;
   isMe: boolean;
 }) {
-  const { callType, status, duration } = msg.callData || {};
-    console.log(msg)
+  const { status, duration } = msg.callData || {};
   const getCallConfig = () => {
-    const isVideo = callType === "video";
-    const typeLabel = isVideo ? "Video call" : "Audio call";
+    const isVideo = msg.type === "video";
+    const typeLabel = msg.type ? "Video call" : "Audio call";
 
     switch (status) {
       case "ended":
@@ -25,11 +24,11 @@ export default function CallMessage({
       case "missed":
         return {
           icon: <PhoneMissed size={18} className="text-red-500" />,
-          title: isMe
-            ? `You missed a ${typeLabel.toLowerCase()}`
+          title: !isMe
+            ? `Missed your ${typeLabel.toLowerCase()}`
             : `Missed ${typeLabel.toLowerCase()}`,
-          detail: "Tap to call back",
-          showCallback: !isMe,
+          detail: null,
+          showCallback: true,
         };
       case "rejected":
         return {

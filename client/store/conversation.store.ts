@@ -50,6 +50,7 @@ export const useConversationStore = create<ConversationState>((set) => ({
         typeof msg.conversation === "string"
           ? msg.conversation
           : (msg.conversation as any)._id;
+          
       const targetIdx = s.conversations.findIndex((c) => c._id === cid);
       if (targetIdx === -1) return s;
 

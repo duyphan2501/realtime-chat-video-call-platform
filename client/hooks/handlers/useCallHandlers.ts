@@ -1,39 +1,70 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useCallStore } from "@/store";
 import type { Socket } from "socket.io-client";
+import { CallStatus } from "@/types";
 
 export function useCallHandlers(socket: Socket | null) {
+  // Giữ ref đến timer để có thể clear khi cần
+  const endedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!socket) return;
 
-    const call = useCallStore.getState();
-
-    socket.on("call:incoming", (data) => {
-      call.setIncoming(data);
+    const onIncoming = (data: any) => {
+      const call = useCallStore.getState();
+      call.setIncoming(data.incoming);
+      call.setCallType(data.callType);
+      call.setPeerUser(data.incoming.from);
       call.setStatus("ringing");
-    });
+      call.setRingStartedAt(data.startedAt);
+    };
 
-    socket.on("call:rejected", () => {
-      call.reset();
-    });
+    const onRejected = ({ reason }: { reason: CallStatus }) => {
+      const { status, setStatus } = useCallStore.getState();
+      if (status === "idle") return;
+      setStatus(reason);
+      if (endedTimerRef.current) clearTimeout(endedTimerRef.current);
 
-    socket.on("call:ended", () => {
-      call.setStatus("ended");
-      // Delay 2 giây để UI hiển thị trạng thái "Cuộc gọi kết thúc" trước khi biến mất
-      setTimeout(() => call.reset(), 2000);
-    });
+      endedTimerRef.current = setTimeout(() => {
+        useCallStore.getState().reset();
+        endedTimerRef.current = null;
+      }, 2000);
+    };
 
-    // Các sự kiện hỗ trợ WebRTC (nếu cần xử lý global)
-    socket.on("call:user_busy", () => {
-      call.setStatus("idle");
-      // Có thể thêm thông báo toast tại đây
-    });
+    const onEnded = () => {
+      // Clear timer cũ nếu event fire liên tiếp
+      const { status, setStatus } = useCallStore.getState();
+      if (status === "idle") return;
+      setStatus("ended");
+      if (endedTimerRef.current) clearTimeout(endedTimerRef.current);
+
+      endedTimerRef.current = setTimeout(() => {
+        useCallStore.getState().reset();
+        endedTimerRef.current = null;
+      }, 2000);
+    };
+
+    const onUserBusy = () => {
+      useCallStore.getState().setStatus("idle");
+    };
+
+    socket.on("call:incoming", onIncoming);
+    socket.on("call:rejected", onRejected);
+    socket.on("call:ended", onEnded);
+    socket.on("call:user_busy", onUserBusy);
 
     return () => {
-      socket.off("call:incoming");
-      socket.off("call:rejected");
-      socket.off("call:ended");
-      socket.off("call:user_busy");
+      // Truyền đúng function reference — chỉ xóa listener của hook này
+      socket.off("call:incoming", onIncoming);
+      socket.off("call:rejected", onRejected);
+      socket.off("call:ended", onEnded);
+      socket.off("call:user_busy", onUserBusy);
+
+      // Clear timer treo nếu component unmount giữa chừng
+      if (endedTimerRef.current) {
+        clearTimeout(endedTimerRef.current);
+        endedTimerRef.current = null;
+      }
     };
   }, [socket]);
 }

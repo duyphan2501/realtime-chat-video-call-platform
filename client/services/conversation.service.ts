@@ -1,4 +1,4 @@
-import { useAPI } from "@/hooks";
+import { useAPI } from "@/API/useAPI";
 import { useConversationStore } from "@/store";
 import { useMutation } from "@tanstack/react-query";
 
@@ -20,7 +20,7 @@ export const useConversationService = () => {
     onError: (error: any) => {
       console.error(error);
     },
-  });
+  }); 
 
   return {
     getConversations: getConversationsMutation.mutateAsync,

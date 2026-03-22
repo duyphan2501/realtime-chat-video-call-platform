@@ -8,7 +8,6 @@ import { useMyContext } from "@/context/MyContext";
 import Loading from "../loadings/Loading";
 import { useAuthStore } from "@/store";
 import { useSocketEvents, useSocketMain } from "@/hooks";
-import { usePresenceHandlers } from "@/hooks/handlers/usePresenceHandlers";
 
 export default function AuthProvider({
   children,

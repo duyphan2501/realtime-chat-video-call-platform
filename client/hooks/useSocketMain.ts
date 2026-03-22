@@ -1,12 +1,13 @@
 "use client";
 import { useCallback, useEffect } from "react";
 import { io, type Socket } from "socket.io-client";
-import { useSocketStore } from "@/store";
+import { useAuthStore, useSocketStore } from "@/store";
 
 let _socket: Socket | null = null;
 
 export function useSocketMain() {
   const { setConnected, setSocket } = useSocketStore();
+  const { handleRefreshToken } = useAuthStore();
 
   const connect = useCallback(
     (token: string) => {
@@ -36,9 +37,17 @@ export function useSocketMain() {
         console.log("🔴 Socket disconnected:", reason);
       });
 
-      _socket.on("connect_error", (err) => {
-        console.error("🟠 Socket connection error:", err.message);
-        setConnected(false);
+      _socket.on("connect_error", async (err) => {
+        if (err.message === "TOKEN_EXPIRED") {
+          try {
+            const newToken = await handleRefreshToken();
+            _socket!.auth = { token: newToken };
+            _socket!.connect();
+          } catch (error) {
+            console.error("🟠 Socket connection error:", err.message);
+            setConnected( false);
+          }
+        }
       });
 
       return _socket;

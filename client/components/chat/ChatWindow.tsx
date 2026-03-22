@@ -30,7 +30,7 @@ import IconBtn from "../IconBtn";
 interface Props {
   conversation: Conversation;
   currentUser: User;
-  onStartCall: (convId: string, type: "audio" | "video") => void;
+  onStartCall: (type: "audio" | "video") => Promise<void>;
 }
 
 export default function ChatWindow({
@@ -193,13 +193,13 @@ export default function ChatWindow({
               <>
                 <IconBtn
                   title="Gọi thoại"
-                  onClick={() => onStartCall(conv._id, "audio")}
+                  onClick={() => onStartCall("audio")}
                 >
                   <Phone size={18} />
                 </IconBtn>
                 <IconBtn
                   title="Gọi video"
-                  onClick={() => onStartCall(conv._id, "video")}
+                  onClick={() => onStartCall("video")}
                 >
                   <Video />
                 </IconBtn>

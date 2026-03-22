@@ -9,13 +9,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { Conversation, User } from "@/types";
-import {
-  selectIsOnline,
-  useConversationStore,
-  useMessageStore,
-  usePresenceStore,
-} from "@/store";
-import { getConvName, getOtherId } from "@/utils/chat.utils";
+import { useConversationStore, useSocketStore } from "@/store";
+
 import ConversationItem from "./ConversationItem";
 import { Search } from "lucide-react";
 import IconBtn from "../IconBtn";
@@ -38,14 +33,14 @@ export default function ConversationList({
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"all" | "group" | "unread">("all");
 
+  const { getConversations, isFetchingConvs } = useConversationService();
+  const convCursor = useConversationStore((s) => s.convCursor);
+  const socket = useSocketStore((s) => s.socket);
   const setActiveId = useConversationStore((s) => s.setActiveId);
 
   const handleConvItemSelect = (conId: string) => {
     setActiveId(conId);
   };
-
-  const { getConversations, isFetchingConvs } = useConversationService();
-  const convCursor = useConversationStore((s) => s.convCursor);
 
   useEffect(() => {
     if (tab !== "unread") {
@@ -57,6 +52,26 @@ export default function ConversationList({
       });
     }
   }, [tab]);
+
+  useEffect(() => {
+    if (!socket || !activeId) return;
+
+    const handleReconnect = () => {
+      console.log("Socket reconnected, joining conversation:", activeId);
+      socket.emit("join_conversation", activeId);
+    };
+
+    // Nếu socket đã kết nối sẵn (trường hợp chuyển tab hoặc mount lại)
+    if (socket.connected) {
+      handleReconnect();
+    }
+
+    socket.on("connect", handleReconnect);
+
+    return () => {
+      socket.off("connect", handleReconnect);
+    };
+  }, [socket, activeId]);
 
   return (
     <div className="flex flex-col shrink-0 border-r w-[320px] border-gray-800">
@@ -138,7 +153,6 @@ export default function ConversationList({
         ) : (
           <>
             {conversations.map((c) => {
-              
               const isActive = c._id === activeId;
               return (
                 <ConversationItem

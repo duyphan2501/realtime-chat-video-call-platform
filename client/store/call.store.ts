@@ -1,54 +1,68 @@
-import { CallStatus, CallType, IncomingCall } from "@/types";
+import { CallStatus, CallType, IncomingCall, User } from "@/types";
 import { create } from "zustand";
 
 interface CallStore {
   status: CallStatus;
   callType: CallType | null;
   incoming: IncomingCall | null;
-  peerSocketId: string | null;
-  convId: string | null;
+  peerUser: User | null;
   isMuted: boolean;
   isCamOff: boolean;
   startTime: number | null;
+  localStream: MediaStream | null;
+  remoteStream: MediaStream | null;
+  role: "caller" | "callee" | null;
+  ringStartedAt: number | null;
 
   setStatus: (s: CallStatus) => void;
   setCallType: (t: CallType | null) => void;
   setIncoming: (c: IncomingCall | null) => void;
-  setPeer: (id: string | null) => void;
-  setConvId: (id: string | null) => void;
+  setPeerUser: (user: User | null) => void;
   toggleMute: () => void;
   toggleCam: () => void;
   setStartTime: (t: number | null) => void;
+  setLocalStream: (s: MediaStream | null) => void;
+  setRemoteStream: (s: MediaStream | null) => void;
+  setRole: (r: "caller" | "callee" | null) => void;
   reset: () => void;
+  setRingStartedAt: (t: number) => void;
 }
 
 export const useCallStore = create<CallStore>((set) => ({
   status: "idle",
   callType: null,
   incoming: null,
-  peerSocketId: null,
-  convId: null,
+  peerUser: null,
   isMuted: false,
   isCamOff: false,
   startTime: null,
+  localStream: null,
+  remoteStream: null,
+  role: null,
+  ringStartedAt: null,
 
   setStatus: (status) => set({ status }),
   setCallType: (callType) => set({ callType }),
   setIncoming: (incoming) => set({ incoming }),
-  setPeer: (peerSocketId) => set({ peerSocketId }),
-  setConvId: (convId) => set({ convId }),
+  setPeerUser: (peerUser) => set({ peerUser }),
   toggleMute: () => set((s) => ({ isMuted: !s.isMuted })),
   toggleCam: () => set((s) => ({ isCamOff: !s.isCamOff })),
   setStartTime: (startTime) => set({ startTime }),
+  setLocalStream: (localStream) => set({ localStream }),
+  setRemoteStream: (remoteStream) => set({ remoteStream }),
+  setRole: (r) => set({role: r}),
+  setRingStartedAt: (t) => set({ringStartedAt: t}),
   reset: () =>
     set({
       status: "idle",
       callType: null,
       incoming: null,
-      peerSocketId: null,
-      convId: null,
+      peerUser: null,
       isMuted: false,
       isCamOff: false,
       startTime: null,
+      localStream: null,
+      remoteStream: null,
+      role: null,
     }),
 }));

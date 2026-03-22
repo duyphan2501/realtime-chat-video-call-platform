@@ -58,7 +58,7 @@ export default function MessageBubble({
       className={`msg-row flex gap-2 items-end mb-1 ${isMe ? "flex-row-reverse" : "flex-row"}`}
     >
       {/* Avatar — chỉ hiện cho tin nhắn người khác trong nhóm */}
-      <div className=" shrink-0 mb-5">
+      <div className={`shrink-0 mb-5 ${!isMe ? "w-8" : ""}`}>
         {showAvatar && !isMe && (
           <img
             src={
@@ -106,7 +106,7 @@ export default function MessageBubble({
             <div className="relative">
               {m.isDeletedForAll ? (
                 <RevokedBubble isMe={isMe} />
-              ) : m.type === "call" ? (
+              ) : m.type === "audio" || m.type === "video" ? (
                 <CallMessage msg={m} isMe={isMe} />
               ) : (
                 <BubbleContent message={m} isMe={isMe} />

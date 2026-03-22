@@ -49,7 +49,4 @@ const socketAuth = async (socket, next) => {
   }
 };
 
-export default socketAuth;
-
-
-export { checkAuth };
+export { checkAuth, socketAuth };

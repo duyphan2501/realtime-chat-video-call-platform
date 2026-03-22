@@ -9,47 +9,60 @@
    ⑤ WebRTC: emit "call:invite"   → khi bắt đầu gọi
    ═══════════════════════════════════════════════════════════ */
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { User, Conversation } from "@/types";
 
 import ConversationList from "@/components/chat/ConversationList";
 import ChatWindow from "@/components/chat/ChatWindow";
 import ContactsPage from "@/components/contacts/ContactsPage";
 import CreateGroupModal from "@/components/chat/CreateGroupModal";
-import { useAuthStore, useCallStore, useConversationStore, useFriendStore } from "@/store";
+import {
+  useAuthStore,
+  useCallStore,
+  useConversationStore,
+  useFriendStore,
+  useSocketStore,
+} from "@/store";
+import { useWebRTC } from "@/hooks";
+import { getOtherId } from "@/utils/chat.utils";
 
 export default function ChatPage() {
   const [friends, setFriends] = useState<User[]>([]);
   const [showCreate, setShowCreate] = useState(false);
-  const currentUser = useAuthStore(s => s.user)
+  const currentUser = useAuthStore((s) => s.user);
 
   const conversations = useConversationStore((s) => s.conversations);
-  const setConvs = useConversationStore((s) => s.setConversations);
   const activeId = useConversationStore((s) => s.activeId);
   const setActiveId = useConversationStore((s) => s.setActiveId);
-  const friendReqCount = useFriendStore((s) => s.friendRequests.length);
-  const setCallStatus = useCallStore((s) => s.setStatus);
-  const setCallType = useCallStore((s) => s.setCallType);
-  const setConvId = useCallStore((s) => s.setConvId);
+  const socket = useSocketStore(s => s.socket)
 
-  const handleOpenChat = () => {};
-  const handleStartCall = () => {};
+  // 2. Lấy các hàm điều khiển từ Hook
+  const { startCall, acceptCall, endCall } = useWebRTC();
 
+  // 3. Lấy trạng thái từ Store
   const activeConv = conversations.find((c) => c._id === activeId);
+
+  const handleStartCall = useCallback(
+    async (type: "audio" | "video") => {
+      if (!activeConv || !currentUser) return;
+      const targetId = getOtherId(activeConv, currentUser);
+      if (!targetId) return;
+      await startCall(targetId, type);
+    },
+    [activeConv, currentUser, startCall],
+  );
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      
+
       <ConversationList
         conversations={conversations}
         activeId={activeId}
         currentUser={currentUser}
         onCreateGroup={() => setShowCreate(true)}
       />
-      <div
-        className="flex flex-1 overflow-hidden"
-      >
+      <div className="flex flex-1 overflow-hidden">
         {activeConv && currentUser ? (
           <ChatWindow
             conversation={activeConv}
@@ -99,7 +112,6 @@ export default function ChatPage() {
           }}
         />
       )}
-
     </div>
   );
 }

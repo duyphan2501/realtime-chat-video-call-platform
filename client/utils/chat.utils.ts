@@ -35,7 +35,6 @@ function getPreview(c: Conversation, me: User | null): string {
   if (lm.type === "image") return prefix + "📷 Hình ảnh";
   if (lm.type === "file") return prefix + "📎 Tệp đính kèm";
   if (lm.type === "video") return prefix + "📹 Video";
-  if (lm.type === "call") return "📞 Cuộc gọi";
   return prefix + (lm.content || "");
 }
 
@@ -58,10 +57,11 @@ function sameDay(a: string, b: string) {
   return new Date(a).toDateString() === new Date(b).toDateString();
 }
 
-
 function groupReactions(reactions: Reaction[]) {
   const map: Record<string, number> = {};
-  reactions.forEach((r) => { map[r.emoji] = (map[r.emoji] || 0) + 1; });
+  reactions.forEach((r) => {
+    map[r.emoji] = (map[r.emoji] || 0) + 1;
+  });
   return Object.entries(map).map(([emoji, count]) => ({ emoji, count }));
 }
 
@@ -71,5 +71,13 @@ function fmtSize(bytes: number) {
   return (bytes / 1048576).toFixed(1) + " MB";
 }
 
-
-export { fmtTime, getPreview, getConvAvatar, getConvName, getOtherId, sameDay, fmtSize, groupReactions };
+export {
+  fmtTime,
+  getPreview,
+  getConvAvatar,
+  getConvName,
+  getOtherId,
+  sameDay,
+  fmtSize,
+  groupReactions,
+};
