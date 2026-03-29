@@ -33,13 +33,14 @@ export default function ConversationList({
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"all" | "group" | "unread">("all");
 
-  const { getConversations, isFetchingConvs } = useConversationService();
+  const { getConversations, isFetchingConvs, markAsRead } = useConversationService();
   const convCursor = useConversationStore((s) => s.convCursor);
   const socket = useSocketStore((s) => s.socket);
   const setActiveId = useConversationStore((s) => s.setActiveId);
 
   const handleConvItemSelect = (conId: string) => {
     setActiveId(conId);
+    markAsRead(conId);
   };
 
   useEffect(() => {

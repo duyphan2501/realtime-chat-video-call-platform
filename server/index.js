@@ -9,6 +9,7 @@ import morgan from "morgan";
 import cors from "cors";
 import { initSocket } from "./sockets/index.js";
 import http from "http"
+import messageRouter from "./routes/message.route.js";
 
 const app = express();
 app.use(express.json());
@@ -26,6 +27,7 @@ initSocket(server, ENV.CLIENT_URL)
 
 app.use("/api/auth", authRouter);
 app.use("/api/conversations", conversationRouter);
+app.use("/api/messages", messageRouter)
 
 app.use(errorHandeler);
 

@@ -9,11 +9,10 @@
    ═══════════════════════════════════════════════════════════ */
 "use client";
 import type { Message, User, Reaction } from "@/types";
-import { conversationApi } from "@/lib/api";
 import { useConversationStore, useMessageStore } from "@/store";
 import BubbleContent from "./BubbleContent";
-import { fmtTime, groupReactions } from "@/utils/chat.utils";
-import { ReplyIcon, TrashIcon } from "lucide-react";
+import { fmtTime, getStatusMessage, groupReactions } from "@/utils/chat.utils";
+import { Check, Loader, ReplyIcon, TrashIcon } from "lucide-react";
 import RevokedBubble from "./RevokedBubble";
 import SystemMsg from "./SystemMsg";
 import CallMessage from "./CallMessage";
@@ -25,6 +24,8 @@ interface Props {
   isMe: boolean;
   showAvatar: boolean;
   convId: string;
+  currentUserId: string;
+  isLast: boolean;
   isGroup?: boolean;
 }
 
@@ -33,32 +34,37 @@ export default function MessageBubble({
   isMe,
   showAvatar,
   convId,
+  currentUserId,
+  isLast,
   isGroup,
 }: Props) {
   const setReplyingTo = useMessageStore((s) => s.setReplyingTo);
+  const conv = useConversationStore((s) => s.conversations.get(convId));
 
   const handleReact = async (emoji: string) => {
-    try {
-      // TODO ①: gọi API react
-      await conversationApi.reactToMessage(convId, m._id, emoji);
-    } catch {}
+    // try {
+    //   // TODO ①: gọi API react
+    //   await conversationApi.reactToMessage(convId, m._id, emoji);
+    // } catch {}
   };
 
   const handleDelete = async () => {
-    if (!confirm("Thu hồi tin nhắn này?")) return;
-    try {
-      // TODO ②: gọi API delete
-      await conversationApi.deleteMessage(convId, m._id, true);
-      useMessageStore.getState().markDeleted(convId, m._id);
-    } catch {}
+    // if (!confirm("Thu hồi tin nhắn này?")) return;
+    // try {
+    //   // TODO ②: gọim.reactions.length  API delete
+    //   await conversationApi.deleteMessage(convId, m._id, true);
+    //   useMessageStore.getState().markDeleted(convId, m._id);
+    // } catch {}
   };
 
   return (
     <div
-      className={`msg-row flex gap-2 items-end mb-1 ${isMe ? "flex-row-reverse" : "flex-row"}`}
+      className={`msg-row flex gap-2 items-start mb-1 ${isMe ? "flex-row-reverse" : "flex-row"}`}
     >
       {/* Avatar — chỉ hiện cho tin nhắn người khác trong nhóm */}
-      <div className={`shrink-0 mb-5 ${!isMe ? "w-8" : ""}`}>
+      <div
+        className={`shrink-0 flex flex-col justify-end  ${!isMe ? "w-8" : ""}`}
+      >
         {showAvatar && !isMe && (
           <img
             src={
@@ -113,7 +119,7 @@ export default function MessageBubble({
               )}
 
               {/* Reactions - Đặt tuyệt đối để đè nhẹ lên mép tin nhắn */}
-              {m.reactions.length > 0 && (
+              {m.reactions?.length > 0 && (
                 <div
                   className={`flex flex-wrap gap-1 -mt-2 relative z-10 ${
                     isMe ? "justify-end pr-2" : "pl-2"
@@ -163,12 +169,12 @@ export default function MessageBubble({
 
               {/* Emoji Picker Menu */}
               <div
-                className="absolute bottom-full left-0 mb-2 z-50 
+                className={`absolute bottom-full ${isMe ? "right-0" : "left-0"} mb-2 z-50 
                  invisible opacity-0 group-hover/emoji:visible group-hover/emoji:opacity-100 
                  flex gap-1 p-1.5 rounded-full
                  /* Slow down entry, speed up exit */
                  transition-[opacity,transform,visibility] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] 
-                 translate-y-2 group-hover/emoji:translate-y-0"
+                 translate-y-2 group-hover/emoji:translate-y-0`}
                 style={{
                   background: "white",
                   boxShadow: "var(--shadow-lg)",
@@ -226,42 +232,71 @@ export default function MessageBubble({
 
         {/* Time + seen — TODO ④ seen từ socket event */}
         <div
-          className={`flex items-center gap-1 mt-0.5 px-1 ${isMe ? "flex-row-reverse" : ""}`}
+          className={`flex items-center gap-1 mt-0.5 text-[11px] px-1 text-gray-400 ${isMe ? "flex-row-reverse" : ""}`}
         >
-          <span className="text-[11px]" style={{ color: "var(--color-ink-4)" }}>
-            {fmtTime(m.createdAt)}
-          </span>
-          {isMe && (
-            <span
-              style={{
-                color:
-                  m.seenBy.length > 0
-                    ? "var(--color-brand)"
-                    : "var(--color-ink-4)",
-              }}
-            >
-              {m.seenBy.length > 0 ? <SeenIcon /> : <SentIcon />}
-            </span>
+          {m.status === "sending" ? (
+            <>
+              <p>Sending</p>
+              <Loader className="animate-spin" size={14} />
+            </>
+          ) : (
+            <>
+              {/* Phần hiển thị trạng thái tin nhắn */}
+              <div className="flex items-center justify-end mt-1 space-x-1">
+                {(isGroup || isMe) && isLast && (
+                  <div className="flex flex-col items-end gap-1 mt-1">
+                    {(() => {
+                      // 1. Lấy danh sách những người (không phải mình) đã đọc đến tin nhắn này
+                      const seenUsers =
+                        conv?.participants.filter((p) => {
+                          const isNotMe = p.user._id !== currentUserId;
+                          const hasReadThis =
+                            new Date(p.lastRead) >= new Date(m.createdAt);
+
+                          return isNotMe && hasReadThis;
+                        }) || [];
+
+                      if (seenUsers.length > 0) {
+                        return (
+                          <>
+                            <div className="flex -space-x-1.5 items-center">
+                              {seenUsers.slice(-3).map((p) => (
+                                <img
+                                  key={p.user._id}
+                                  src={p.user.avatar}
+                                  alt="seen"
+                                  className="w-3.5 h-3.5 rounded-full border border-white dark:border-zinc-900 object-cover"
+                                  title={`Seen by ${p.user.name} at ${fmtTime(p.lastRead)}`}
+                                />
+                              ))}
+                              {seenUsers.length > 3 && (
+                                <span className="text-[9px] text-gray-500 ml-1">
+                                  +{seenUsers.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          </>
+                        );
+                      }
+
+                      /* 2. Nếu CHƯA có ai xem: Hiện trạng thái Sending/Sent/Delivered */
+                      const status = getStatusMessage(m);
+                      return (
+                        <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                          {status.icon}
+                          <span>
+                            {status.label} &bull; {fmtTime(m.createdAt)}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
     </div>
   );
 }
-
-const SeenIcon = () => (
-  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-    <path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zm12.73-1.41A8 8 0 1 0 4.34 4.34a8 8 0 0 0 11.32 11.32zM6.7 9.29L9 11.6l4.3-4.3 1.4 1.42L9 14.4l-3.7-3.7 1.4-1.42z" />
-  </svg>
-);
-const SentIcon = () => (
-  <svg
-    className="w-3.5 h-3.5"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    viewBox="0 0 24 24"
-  >
-    <path strokeLinecap="round" d="M5 13l4 4L19 7" />
-  </svg>
-);

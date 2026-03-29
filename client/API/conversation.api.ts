@@ -15,4 +15,6 @@ export const conversationAPI = (axiosPrivate: AxiosInstance) => ({
     axiosPrivate.get(
       `/conversations?type=${type}&cursor=${cursor}&lastId=${lastId}&limit=${limit}`,
     ),
+  markAsRead: (conversationId: string) =>
+    axiosPrivate.post(`/conversations/${conversationId}/read`),
 });

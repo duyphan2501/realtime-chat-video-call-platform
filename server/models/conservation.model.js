@@ -7,6 +7,7 @@ const participantSchema = new mongoose.Schema(
     role: { type: String, enum: ["member", "admin"], default: "member" },
     joinedAt: { type: Date, default: Date.now },
     lastRead: { type: Date, default: Date.now },
+    unreadCount: { type: Number, default: 0 },
   },
   { _id: false },
 );

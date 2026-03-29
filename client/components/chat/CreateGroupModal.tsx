@@ -8,7 +8,6 @@
 "use client";
 import { useState, useRef, useCallback } from "react";
 import type { User } from "@/types";
-import { conversationApi } from "@/lib/api";
 import { useConversationStore } from "@/store";
 
 interface Props {
@@ -46,24 +45,24 @@ export default function CreateGroupModal({ friends, onClose, onCreate }: Props) 
   };
 
   const handleCreate = async () => {
-    if (!name.trim() || selected.length < 1) return;
-    setLoading(true); setError("");
-    try {
-      // TODO ②: tạo nhóm
-      const res = await conversationApi.createGroup(
-        { name: name.trim(), memberIds: selected.map((u) => u._id) },
-        avatar ?? undefined
-      );
-      // TODO ②: kiểm tra key response — "conversation" hay "data"?
-      const conv = res.conversation ?? res.data ?? res;
-      addConv(conv);
-      onCreate(conv._id);
-      onClose();
-    } catch (err: any) {
-      setError(err.message || "Tạo nhóm thất bại");
-    } finally {
-      setLoading(false);
-    }
+    // if (!name.trim() || selected.length < 1) return;
+    // setLoading(true); setError("");
+    // try {
+    //   // TODO ②: tạo nhóm
+    //   const res = await conversationApi.createGroup(
+    //     { name: name.trim(), memberIds: selected.map((u) => u._id) },
+    //     avatar ?? undefined
+    //   );
+    //   // TODO ②: kiểm tra key response — "conversation" hay "data"?
+    //   const conv = res.conversation ?? res.data ?? res;
+    //   addConv(conv);
+    //   onCreate(conv._id);
+    //   onClose();
+    // } catch (err: any) {
+    //   setError(err.message || "Tạo nhóm thất bại");
+    // } finally {
+    //   setLoading(false);
+    // }
   };
 
   return (

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { ConversationModel } from "../models/conservation.model.js";
 import { MessageModel } from "../models/message.model.js";
+import { io } from "../sockets/index.js";
 
 export const ConversationService = {
   getConversations: async ({ userId, type, cursor, lastId, limit = 10 }) => {
@@ -27,10 +28,10 @@ export const ConversationService = {
     const conversations = await ConversationModel.find(match)
       .sort({ lastMessageAt: -1, _id: -1 })
       .limit(Number(limit))
-      .populate("participants.user", "_id name avatar")
+      .populate("participants.user", "_id name avatar lastRead")
       .populate({
         path: "lastMessage",
-        select: "content type sender createdAt deletedForEveryone",
+        select: "content type attachments sender createdAt deletedForEveryone",
         populate: { path: "sender", select: "_id name avatar" },
       })
       .lean();
@@ -54,5 +55,23 @@ export const ConversationService = {
         : null;
 
     return { data, nextCursor };
+  },
+
+  markAsRead: async ({ conversationId, userId }) => {
+    const lastRead = new Date();
+    await ConversationModel.updateOne(
+      { _id: conversationId, "participants.user": userId },
+      {
+        $set: {
+          "participants.$.unreadCount": 0,
+          "participants.$.lastRead": lastRead,
+        },
+      },
+    );
+    io.to(`conversation_${conversationId}`).emit("message:seen", {
+      conversationId,
+      userId,
+      lastRead,
+    });
   },
 };

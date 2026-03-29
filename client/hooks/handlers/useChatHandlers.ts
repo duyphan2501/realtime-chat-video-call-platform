@@ -6,10 +6,18 @@ export function useChatHandlers(socket: Socket | null) {
   useEffect(() => {
     if (!socket) return;
 
-    const onMessageNew = (msg: any) => {
-      console.log("new message: ", msg);
-      useMessageStore.getState().addMessage(msg);
-      useConversationStore.getState().bumpConversation(msg);
+    const onMessageNew = (data: any) => {
+      const { addMessage } = useMessageStore.getState();
+      addMessage(data.newMessage);
+      useConversationStore
+        .getState()
+        .bumpConversation(data.newMessage, data.unreadCount);
+      socket.emit("message:received", {
+        messageId: data.newMessage._id,
+        senderId: data.newMessage.sender._id,
+        conversationId: data.newMessage.conversation,
+        tempId: data.newMessage.tempId, 
+      });
     };
 
     const onMessageReaction = ({
@@ -41,24 +49,31 @@ export function useChatHandlers(socket: Socket | null) {
 
     const onMessageSeen = ({
       conversationId,
-      messageId,
-      seenBy,
+      userId,
+      lastRead,
     }: {
       conversationId: string;
-      messageId: string;
-      seenBy: any;
+      userId: string;
+      lastRead: Date;
     }) => {
-      useMessageStore.getState().markSeen(conversationId, messageId, seenBy);
+      useConversationStore
+        .getState()
+        .updateSeen(conversationId, userId, lastRead);
     };
 
     const onGroupCreated = (newConv: any) => {
       useConversationStore.getState().addConversation(newConv);
     };
 
+    const onMessageReceived = ({ messageId, conversationId, tempId }: { messageId: string; conversationId: string; tempId: string }) => {
+      useMessageStore.getState().markAsDelivered(messageId, conversationId, tempId);
+    }
+
     socket.on("message:new", onMessageNew);
     socket.on("message:reaction", onMessageReaction);
     socket.on("message:deleted", onMessageDeleted);
     socket.on("message:seen", onMessageSeen);
+    socket.on("message:received", onMessageReceived);
     socket.on("group:created", onGroupCreated);
 
     return () => {

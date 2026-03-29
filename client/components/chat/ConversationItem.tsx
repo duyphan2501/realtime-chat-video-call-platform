@@ -66,22 +66,23 @@ const ConversationItem = ({
       </div>
 
       {/* Info */}
-      <div className="flex-1 min-w-0">
+      <div className={`flex-1 min-w-0 ${conv.unreadCount > 0 ? "font-semibold text-white" : "text-white/80"}`}>
         <div className="flex items-center justify-between mb-0.5">
           <span className="font-semibold text-sm truncate text-white">
             {name}
           </span>
-          <span
-            className="text-[11px] ml-2 shrink-0"
-            style={{ color: "var(--color-ink-4)" }}
-          >
-            {fmtTime(conv.updatedAt)}
-          </span>
+          {conv.lastMessage && (
+            <span
+              className="text-[11px] ml-2 shrink-0"
+            >
+              {fmtTime(conv.updatedAt)}
+            </span>
+          )}
         </div>
         <div className="flex items-center justify-between">
           <span
             className="text-xs truncate"
-            style={{ color: "var(--color-ink-4)" }}
+            
           >
             {getPreview(conv, currentUser)}
           </span>

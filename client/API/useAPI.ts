@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import useAxiosPrivate from "../hooks/useAxiosPrivate";
 import { authAPI } from "@/API/auth.api";
 import { conversationAPI } from "@/API/conversation.api";
+import { messageAPI } from "./message.api";
 
 export const useAPI = () => {
   const axios = useAxiosPrivate(); // Hook xử lý lỗi 401 & Refresh Token
@@ -10,6 +11,7 @@ export const useAPI = () => {
     () => ({
       auth: authAPI(axios),
       conversation: conversationAPI(axios),
+      message: messageAPI(axios)
     }),
     [axios],
   );

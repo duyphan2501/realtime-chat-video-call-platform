@@ -40,7 +40,7 @@ export default function ChatPage() {
   const { startCall, acceptCall, endCall } = useWebRTC();
 
   // 3. Lấy trạng thái từ Store
-  const activeConv = conversations.find((c) => c._id === activeId);
+  const activeConv = conversations.get(activeId || "") || null;
 
   const handleStartCall = useCallback(
     async (type: "audio" | "video") => {
@@ -57,7 +57,7 @@ export default function ChatPage() {
       {/* Sidebar */}
 
       <ConversationList
-        conversations={conversations}
+        conversations={Array.from(conversations.values())}
         activeId={activeId}
         currentUser={currentUser}
         onCreateGroup={() => setShowCreate(true)}

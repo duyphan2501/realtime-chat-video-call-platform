@@ -22,8 +22,18 @@ export const useConversationService = () => {
     },
   }); 
 
+  const markAsRead = async (conversationId: string) => {
+    try {
+      useConversationStore.getState().markAsRead(conversationId);
+      await api.markAsRead(conversationId);
+    } catch (error) {
+      console.error("Lỗi khi đánh dấu đã xem:", error);
+    }
+  };
+
   return {
     getConversations: getConversationsMutation.mutateAsync,
     isFetchingConvs: getConversationsMutation.isPending,
+    markAsRead,
   };
 };

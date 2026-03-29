@@ -3,15 +3,15 @@ import { socketAuth } from "../middlewares/auth.middleware.js";
 import registerWebRTCHandlers from "./webrtc.handler.js";
 import registerChatHandlers from "./chat.handler.js";
 
-const userSocketMap = {}; // Dùng chung cho các handlers
+export const userSocketMap = {}; 
+export let io;
 
 export const initSocket = (server, clientUrl) => {
-  const io = new Server(server, {
+  io = new Server(server, {
     pingTimeout: 60000,
     cors: { origin: clientUrl, credentials: true },
     transports: ["websocket", "polling"],
   });
-
   io.use(socketAuth);
 
   io.on("connection", (socket) => {
@@ -53,6 +53,4 @@ export const initSocket = (server, clientUrl) => {
       }
     });
   });
-
-  return io;
 };

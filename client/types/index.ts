@@ -24,10 +24,10 @@ export type MessageType =
 
 export interface Attachment {
   url: string;
-  filename: string;
-  mimetype: string;
+  type: string;
+  name: string;
   size: number;
-  thumbnail?: string;
+  format: string;
 }
 
 export interface Reaction {
@@ -44,11 +44,13 @@ export interface Message {
   attachments?: Attachment[];
   replyTo?: Message | null;
   reactions: Reaction[];
-  seenBy: { user: string; seenAt: string }[];
   isDeletedForAll: boolean;
+  isDelivered: boolean;
   callData?: { duration: number; status: string; callType: string };
   createdAt: string;
   updatedAt: string;
+  tempId?: string;
+  status?: "sending" | "failed" | "sent";
 }
 
 export type ConversationType = "direct" | "group";
@@ -59,7 +61,7 @@ export interface Participant {
   nickname?: string;
   role: "member" | "admin" | "owner";
   joinedAt: string;
-  lastRead: string;
+  lastRead: Date;
   isActive: boolean;
 }
 
@@ -74,6 +76,7 @@ export interface Conversation {
     sender: User;
     type: MessageType;
     createdAt: string;
+    attachments?: Attachment[];
     deletedForEveryone?: boolean;
   };
   unreadCount: number;

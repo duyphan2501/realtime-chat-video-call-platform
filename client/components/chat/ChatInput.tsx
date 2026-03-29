@@ -76,14 +76,10 @@ export default function ChatInput({ convId, onSend, disabled }: Props) {
         <div className="flex items-center gap-3 px-4 py-2 border-t border-gray-800">
           <div className="w-0.5 h-8 rounded-full shrink-0" />
           <div className="flex-1 min-w-0">
-            <p
-              className="text-xs font-semibold text-white"
-            >
+            <p className="text-xs font-semibold text-white">
               {replyingTo.sender.name}
             </p>
-            <p
-              className="text-xs truncate text-gray-400"
-            >
+            <p className="text-xs truncate text-gray-400">
               {replyingTo.content || "Tệp đính kèm"}
             </p>
           </div>
@@ -169,7 +165,7 @@ export default function ChatInput({ convId, onSend, disabled }: Props) {
             onChange={handleInput}
             onKeyDown={handleKey}
             onBlur={stopTyping}
-            disabled={disabled || sending}
+            disabled={disabled}
             placeholder="Type somthing..."
             className="w-full resize-none px-4 py-2.5 text-sm outline-none border-gray-700 text-white border-x"
             style={{
@@ -190,9 +186,7 @@ export default function ChatInput({ convId, onSend, disabled }: Props) {
                 : "var(--color-s3)",
           }}
         >
-          {sending ? (
-            <SpinIcon className="w-4 h-4 text-white animate-spin" />
-          ) : text.trim() || files.length ? (
+          {text.trim() || files.length ? (
             <SendIcon className="w-4 h-4 text-white" />
           ) : (
             <ThumbsIcon
