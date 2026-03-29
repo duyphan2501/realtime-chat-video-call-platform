@@ -1,6 +1,7 @@
 import ENV from "./utils/env.util.js";
 import errorHandeler from "./middlewares/errorHandler.middleware.js";
 import authRouter from "./routes/auth.route.js";
+import userRouter from "./routes/user.route.js";
 import connectToDB from "./database/connectMongoDB.js";
 import conversationRouter from "./routes/conversation.route.js";
 import express from "express"
@@ -26,6 +27,7 @@ const server = http.createServer(app);
 initSocket(server, ENV.CLIENT_URL)
 
 app.use("/api/auth", authRouter);
+app.use("/api/users", userRouter);
 app.use("/api/conversations", conversationRouter);
 app.use("/api/messages", messageRouter)
 
