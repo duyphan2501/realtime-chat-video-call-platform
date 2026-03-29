@@ -3,7 +3,8 @@ import { socketAuth } from "../middlewares/auth.middleware.js";
 import registerWebRTCHandlers from "./webrtc.handler.js";
 import registerChatHandlers from "./chat.handler.js";
 
-const userSocketMap = {}; // Dùng chung cho các handlers
+// Global map để track socket theo userId
+global.userSocketMap = {};
 
 export const initSocket = (server, clientUrl) => {
   const io = new Server(server, {
@@ -17,11 +18,11 @@ export const initSocket = (server, clientUrl) => {
   io.on("connection", (socket) => {
     const userId = socket.userId;
     if (userId) {
-      userSocketMap[userId] = socket.id;
+      global.userSocketMap[userId] = socket.id;
       socket.join(`user_${userId}`);
       // Chỉ client vừa kết nối mới nhận danh sách tất cả người online
       socket.emit("presence:online_users", {
-        userIds: Object.keys(userSocketMap),
+        userIds: Object.keys(global.userSocketMap),
       });
 
       // Các client khác nhận thông báo một người mới vừa online
@@ -37,7 +38,7 @@ export const initSocket = (server, clientUrl) => {
 
     socket.on("disconnect", () => {
       if (userId) {
-        delete userSocketMap[userId];
+        delete global.userSocketMap[userId];
 
         // Thông báo cho mọi người user này đã offline
         io.emit("presence:offline", { userId });

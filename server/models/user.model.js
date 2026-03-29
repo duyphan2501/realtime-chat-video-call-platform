@@ -17,6 +17,17 @@ const userSchema = new mongoose.Schema(
     phone: String,
     lastActive: Date,
     bio: String,
+
+    // Friends system
+    friends: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    friendRequestsReceived: [{
+      from: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      createdAt: { type: Date, default: Date.now }
+    }],
+    friendRequestsSent: [{
+      to: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      createdAt: { type: Date, default: Date.now }
+    }],
   },
   { timestamps: true, collection: "users" }
 );
