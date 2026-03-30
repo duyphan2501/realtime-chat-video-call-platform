@@ -79,7 +79,7 @@ function fmtTime(iso?: string | Date): string {
   const now = new Date();
   const diffInSecs = (now.getTime() - d.getTime()) / 1000;
 
-  if (diffInSecs < 60) return "Just now";
+  if (diffInSecs < 60) return "just now";
 
   if (diffInSecs < 3600) {
     const mins = Math.floor(diffInSecs / 60);

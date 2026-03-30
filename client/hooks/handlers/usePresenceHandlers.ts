@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { usePresenceStore } from "@/store";
+import { useConversationStore, usePresenceStore } from "@/store";
 import type { Socket } from "socket.io-client";
 
 import { TypingUser } from "@/types";
@@ -11,14 +11,31 @@ export function usePresenceHandlers(socket: Socket | null) {
     const onOnline = ({ userId }: { userId: string }) =>
       usePresenceStore.getState().setOnline(userId, true);
 
-    const onOffline = ({ userId }: { userId: string }) =>
+    const onOffline = ({
+      userId,
+      timestamp,
+    }: {
+      userId: string;
+      timestamp: Date;
+    }) => {
       usePresenceStore.getState().setOnline(userId, false);
+    };
 
-    const onTypingStart = ({ conversationId, user }: {conversationId: string, user: TypingUser}) =>
-      usePresenceStore.getState().setTyping(conversationId, user);
+    const onTypingStart = ({
+      conversationId,
+      user,
+    }: {
+      conversationId: string;
+      user: TypingUser;
+    }) => usePresenceStore.getState().setTyping(conversationId, user);
 
-    const onTypingStop = ({ conversationId, userId }: {conversationId: string, userId: string}) =>
-      usePresenceStore.getState().clearTyping(conversationId, userId);
+    const onTypingStop = ({
+      conversationId,
+      userId,
+    }: {
+      conversationId: string;
+      userId: string;
+    }) => usePresenceStore.getState().clearTyping(conversationId, userId);
 
     const onOnlineUsers = ({ userIds }: { userIds: string[] }) =>
       usePresenceStore.getState().setOnlineUsers(userIds);

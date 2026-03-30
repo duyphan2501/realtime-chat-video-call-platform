@@ -3,15 +3,16 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 
 interface PresenceState {
-  onlineUsers: Record<string, boolean>;
+  onlineUsers: Record<string, { isOnline: boolean; lastActive: Date }>;
   typingUsers: Record<string, TypingUser[]>;
 
-  setOnline: (userId: string, online: boolean) => void;
+  setOnline: (userId: string, online: boolean, lastActive?: Date) => void;
   setOnlineUsers: (userIds: string[]) => void;
   setTyping: (cid: string, user: TypingUser) => void;
   clearTyping: (cid: string, userId: string) => void;
   clearConversation: (cid: string) => void;
   isOnline: (userId: string) => boolean;
+  getLastActive: (userId: string) => Date | null;
   getTypingUsers: (cid: string) => TypingUser[];
 }
 
@@ -51,30 +52,43 @@ export const usePresenceStore = create<PresenceState>()(
     typingUsers: {},
 
     // Toggle online status — O(1), selector-friendly
-    setOnline: (userId, online) =>
+    setOnline: (userId, online, lastActive) =>
       set((s) => {
-        if (Boolean(s.onlineUsers[userId]) === online) return {};
+        const current = s.onlineUsers[userId];
+        const newStatus = {
+          isOnline: online,
+          lastActive: lastActive || current?.lastActive || new Date(),
+        };
+
+        // Tránh re-render nếu dữ liệu không thực sự thay đổi
+        if (
+          current?.isOnline === online &&
+          current?.lastActive === newStatus.lastActive
+        ) {
+          return {};
+        }
+
         return {
-          onlineUsers: { ...s.onlineUsers, [userId]: online },
+          onlineUsers: { ...s.onlineUsers, [userId]: newStatus },
         };
       }),
 
     setOnlineUsers: (userIds: string[]) =>
       set((s) => {
-        // Build new map from array — O(n), single pass
-        const next: Record<string, boolean> = {};
-        for (const id of userIds) next[id] = true;
+        const next: Record<string, { isOnline: boolean; lastActive: Date }> = {
+          ...s.onlineUsers,
+        };
+        let hasChange = false;
 
-        // Skip update if contents are identical
-        const prev = s.onlineUsers;
-        const prevKeys = Object.keys(prev);
-        if (
-          prevKeys.length === userIds.length &&
-          prevKeys.every((id) => next[id])
-        ) {
-          return {};
-        }
-        return { onlineUsers: next };
+        // Cập nhật những user đang online
+        userIds.forEach((id) => {
+          if (!next[id]?.isOnline) {
+            next[id] = { isOnline: true, lastActive: new Date() };
+            hasChange = true;
+          }
+        });
+
+        return hasChange ? { onlineUsers: next } : {};
       }),
 
     // Upsert typing user + reset TTL timer
@@ -128,15 +142,16 @@ export const usePresenceStore = create<PresenceState>()(
     },
 
     // Derived selectors (stable references when used with usePresenceStore.getState())
-    isOnline: (userId) => Boolean(get().onlineUsers[userId]),
+    isOnline: (userId) => Boolean(get().onlineUsers[userId]?.isOnline),
     getTypingUsers: (cid) => get().typingUsers[cid] ?? [],
+    getLastActive: (userId) => get().onlineUsers[userId]?.lastActive,
   })),
 );
 
 // ─── Typed selectors (use in components for minimal re-renders) ───────────────
 
 export const selectIsOnline = (userId: string) => (s: PresenceState) =>
-  Boolean(s.onlineUsers[userId]);
+  Boolean(s.onlineUsers[userId]?.isOnline);
 
 export const selectTypingUsers = (cid: string) => (s: PresenceState) =>
   s.typingUsers[cid] ?? EMPTY_ARRAY;

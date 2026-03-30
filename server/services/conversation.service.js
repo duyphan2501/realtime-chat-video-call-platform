@@ -28,7 +28,7 @@ export const ConversationService = {
     const conversations = await ConversationModel.find(match)
       .sort({ lastMessageAt: -1, _id: -1 })
       .limit(Number(limit))
-      .populate("participants.user", "_id name avatar lastRead")
+      .populate("participants.user", "_id name avatar lastRead lastActive")
       .populate({
         path: "lastMessage",
         select: "content type attachments sender createdAt deletedForEveryone",

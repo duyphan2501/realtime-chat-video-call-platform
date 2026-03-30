@@ -20,13 +20,13 @@ import {
 import { getSocket } from "@/hooks";
 import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
-import RightPanel from "./RightPanel";
 import { useShallow } from "zustand/shallow";
 import DateDivider from "../DateDivider";
-import { getOtherId, sameDay } from "@/utils/chat.utils";
+import { fmtTime, getOtherId, sameDay } from "@/utils/chat.utils";
 import { Info, Phone, Search, Video } from "lucide-react";
 import IconBtn from "../IconBtn";
 import { useConversationService, useMessageService } from "@/services";
+import RightPanel from "./RightPanel";
 
 interface Props {
   conversation: Conversation;
@@ -39,7 +39,7 @@ export default function ChatWindow({
   currentUser,
   onStartCall,
 }: Props) {
-  const [showInfo, setShowInfo] = useState(false);
+  const [isRightPanelOpen, setRightPanelOpen] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // "force" = mới mở conv → scroll instant, không check vị trí
@@ -162,7 +162,7 @@ export default function ChatWindow({
       scrollIntent.current = "none";
     }
   }, [messages]);
-  const {markAsRead} = useConversationService();
+  const { markAsRead } = useConversationService();
 
   const handleMarkAsRead = () => {
     if (conv._id) {
@@ -234,16 +234,14 @@ export default function ChatWindow({
 
   /* ── Header info ─────────────────────────────── */
   const isGroup = conv.type === "group";
-  const other = conv.participants.find(
-    (p) => (p.user as User)?._id !== currentUser._id,
-  );
-  const headerName = isGroup ? conv.name : (other?.user as User)?.name;
-  const headerAvatar = isGroup ? conv.avatar : (other?.user as User)?.avatar;
+  const other = isGroup ? null : conv.otherUser;
+  const headerName = isGroup ? conv.name : other?.name;
+  const headerAvatar = isGroup ? conv.avatar : other?.avatar;
   const memberCount = conv.participants.length;
 
-  const otherUserId = getOtherId(conv, currentUser);
+  const otherUserId = other?._id;
   const isOtherOnline =
-    !isGroup && usePresenceStore((s) => s.isOnline(otherUserId));
+    !isGroup && usePresenceStore((s) => s.isOnline(otherUserId || ""));
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -279,7 +277,7 @@ export default function ChatWindow({
                   ? `${memberCount} members`
                   : isOtherOnline
                     ? "Online"
-                    : "Offline"}
+                    : `Last active ${fmtTime(usePresenceStore.getState().getLastActive(otherUserId || "") || other?.lastActive)}`}
               </p>
             </div>
           </div>
@@ -298,7 +296,10 @@ export default function ChatWindow({
             <IconBtn title="Tìm kiếm" onClick={() => {}}>
               <Search size={20} />
             </IconBtn>
-            <IconBtn title="Thông tin" onClick={() => setShowInfo((v) => !v)}>
+            <IconBtn
+              title="Thông tin"
+              onClick={() => setRightPanelOpen((v) => !v)}
+            >
               <Info size={20} />
             </IconBtn>
           </div>
@@ -380,11 +381,10 @@ export default function ChatWindow({
       </div>
 
       {/* ── Right panel ── */}
-      {showInfo && (
+      {isRightPanelOpen && (
         <RightPanel
-          conversation={conv}
-          currentUser={currentUser}
-          onClose={() => setShowInfo(false)}
+          conversationId={conv._id}
+          onClose={() => setRightPanelOpen(false)}
         />
       )}
     </div>

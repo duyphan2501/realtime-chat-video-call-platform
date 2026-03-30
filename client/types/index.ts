@@ -9,7 +9,7 @@ export interface User {
   avatar: string;
   phone?: string;
   bio?: string;
-  lastSeen?: string;
+  lastActive?: Date;
   /** "friend" | "sent" | "received" | "none" — backend trả về */
   friendStatus?: "friend" | "sent" | "received" | "none";
 }
@@ -28,6 +28,7 @@ export interface Attachment {
   name: string;
   size: number;
   format: string;
+  createdAt?: string;
 }
 
 export interface Reaction {
@@ -79,6 +80,7 @@ export interface Conversation {
     attachments?: Attachment[];
     deletedForEveryone?: boolean;
   };
+  otherUser?: User;
   unreadCount: number;
   updatedAt: string;
   createdAt: string;

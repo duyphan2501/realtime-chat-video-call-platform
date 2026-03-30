@@ -15,7 +15,7 @@ const userSchema = new mongoose.Schema(
     isVerified: { type: Boolean, default: false },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
     phone: String,
-    lastActive: Date,
+    lastActive: {type: Date, default: Date.now},
     bio: String,
 
     // Friends system
