@@ -39,6 +39,7 @@ export const ConversationService = {
     const data = conversations.map((c) => ({
       ...c,
       lastMessage: c.lastMessage?.deletedForEveryone ? null : c.lastMessage,
+      avatar: c.avatar?.url || undefined,
       otherUser:
         c.type === "direct"
           ? (c.participants.find(
@@ -73,5 +74,64 @@ export const ConversationService = {
       userId,
       lastRead,
     });
+  },
+
+  createConversation: async ({
+    type,
+    participantIds,
+    name,
+    avatar,
+    creatorId,
+  }) => {
+    // 1. Tạo Conversation
+    const conversation = await ConversationModel.create({
+      type,
+      name: type === "group" ? name : null,
+      avatar: type === "group" && avatar ? avatar : null,
+      participants: participantIds.map((id) => ({
+        user: id,
+        lastRead: null,
+        role: id === creatorId ? "admin" : "member",
+        unreadCount: 1,
+      })),
+      createdBy: creatorId,
+      lastMessageAt: new Date(),
+    });
+    conversation.avatar = conversation.avatar?.url || undefined;
+
+    if (type === "group") {
+      const fullConversation = await conversation.populate([
+        { path: "participants.user", select: "_id name avatar" },
+        { path: "createdBy", select: "_id name avatar" },
+      ]);
+
+      // 2. Tạo tin nhắn hệ thống (System Message)
+      // Bạn có thể tạo 1 tin nhắn tổng hợp hoặc nhiều tin nhắn riêng lẻ
+      const systemContent = `Group created by ${fullConversation.createdBy.name}`;
+
+      const systemMsg = await MessageModel.create({
+        conversation: conversation._id,
+        sender: creatorId, // Người tạo nhóm
+        content: systemContent,
+        type: "system", // Đánh dấu đây là tin nhắn hệ thống
+      });
+
+      // 3. Cập nhật lastMessage cho Conversation (để hiện preview ở danh sách chat)
+      conversation.lastMessage = systemMsg._id;
+      await conversation.save();
+
+      // 4. Bắn Socket thông báo cho tất cả thành viên
+      console.log("conversation", fullConversation);
+      console.log("systemMsg", systemMsg);
+      participantIds.forEach((id) => {
+        // Thông báo có nhóm mới
+        io.to(`user_${id}`).emit("conversation:new", fullConversation);
+
+        // Thông báo có tin nhắn mới (tin nhắn hệ thống)
+        io.to(`user_${id}`).emit("message:new", { newMessage: systemMsg, unreadCount: 1 });
+      });
+    }
+
+    return conversation;
   },
 };

@@ -16,6 +16,7 @@ import { Check, Loader, ReplyIcon, TrashIcon } from "lucide-react";
 import RevokedBubble from "./RevokedBubble";
 import SystemMsg from "./SystemMsg";
 import CallMessage from "./CallMessage";
+import { getAvatar } from "@/utils/user.utils";
 
 const QUICK_EMOJIS = ["❤️", "😂", "😮", "😢", "😡", "👍"];
 
@@ -57,6 +58,10 @@ export default function MessageBubble({
     // } catch {}
   };
 
+  if (m.type === "system") {
+    return <SystemMsg text={m.content || ""} />;
+  }
+
   return (
     <div
       className={`msg-row flex gap-2 items-start mb-1 ${isMe ? "flex-row-reverse" : "flex-row"}`}
@@ -67,10 +72,7 @@ export default function MessageBubble({
       >
         {showAvatar && !isMe && (
           <img
-            src={
-              m.sender.avatar ||
-              `https://ui-avatars.com/api/?name=${encodeURIComponent(m.sender.name)}&size=32&background=e3e8f0&color=0068FF&bold=true`
-            }
+            src={getAvatar(m.sender as User)}
             alt={m.sender.name}
             className="w-8 h-8 rounded-full object-cover bg-gray-300"
           />
@@ -260,15 +262,20 @@ export default function MessageBubble({
                         return (
                           <>
                             <div className="flex -space-x-1.5 items-center">
-                              {seenUsers.slice(-3).map((p) => (
-                                <img
-                                  key={p.user._id}
-                                  src={p.user.avatar}
-                                  alt="seen"
-                                  className="w-3.5 h-3.5 rounded-full border border-white dark:border-zinc-900 object-cover"
-                                  title={`Seen by ${p.user.name} at ${fmtTime(p.lastRead)}`}
-                                />
-                              ))}
+                              {seenUsers.slice(-3).map((p) => {
+                                if (m.sender._id === p.user._id) {
+                                  return null; // Không hiển thị avatar của người gửi nếu họ đã đọc tin nhắn của chính mình
+                                }
+                                return (
+                                  <img
+                                    key={p.user._id}
+                                    src={getAvatar(p.user)}
+                                    alt="seen"
+                                    className="w-4 h-4 rounded-full object-cover"
+                                    title={`Seen by ${p.user.name} at ${fmtTime(p.lastRead)}`}
+                                  />
+                                );
+                              })}
                               {seenUsers.length > 3 && (
                                 <span className="text-[9px] text-gray-500 ml-1">
                                   +{seenUsers.length - 3}

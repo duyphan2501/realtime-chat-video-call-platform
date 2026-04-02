@@ -27,7 +27,6 @@ import { useWebRTC } from "@/hooks";
 import { getOtherId } from "@/utils/chat.utils";
 
 export default function ChatPage() {
-  const [friends, setFriends] = useState<User[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
 
@@ -105,11 +104,7 @@ export default function ChatPage() {
       {/* Overlays */}
       {showCreate && currentUser && (
         <CreateGroupModal
-          friends={friends}
           onClose={() => setShowCreate(false)}
-          onCreate={(id) => {
-            setActiveId(id);
-          }}
         />
       )}
     </div>

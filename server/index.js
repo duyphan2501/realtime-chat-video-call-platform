@@ -4,13 +4,14 @@ import authRouter from "./routes/auth.route.js";
 import userRouter from "./routes/user.route.js";
 import connectToDB from "./database/connectMongoDB.js";
 import conversationRouter from "./routes/conversation.route.js";
-import express from "express"
+import express from "express";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import cors from "cors";
 import { initSocket } from "./sockets/index.js";
-import http from "http"
+import http from "http";
 import messageRouter from "./routes/message.route.js";
+import uploadRouter from "./routes/upload.route.js";
 
 const app = express();
 app.use(express.json());
@@ -24,12 +25,13 @@ app.use(
 );
 
 const server = http.createServer(app);
-initSocket(server, ENV.CLIENT_URL)
+initSocket(server, ENV.CLIENT_URL);
 
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/conversations", conversationRouter);
-app.use("/api/messages", messageRouter)
+app.use("/api/messages", messageRouter);
+app.use("/api/uploads", uploadRouter);
 
 app.use(errorHandeler);
 

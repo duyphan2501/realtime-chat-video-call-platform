@@ -36,4 +36,25 @@ const markAsRead = async(req, res, next) => {
   }
 };
 
-export { getConversations, markAsRead };
+const createConversation = async (req, res, next) => {
+  try {
+    const { type, participantIds, name, avatar } = req.body;
+    const creatorId = req.user.userId;
+    if (!type || !participantIds || participantIds.length === 0) {
+      throw createHttpError.BadRequest("Type and participantIds are required");
+    }
+
+    const conversation = await ConversationService.createConversation({
+      type,
+      participantIds,
+      name,
+      avatar,
+      creatorId,
+    });
+    res.status(201).json({ conversation });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export { getConversations, markAsRead, createConversation };

@@ -1,9 +1,11 @@
 import { useAPI } from "@/API/useAPI";
 import { useConversationStore, useMessageStore } from "@/store";
 import { useMutation } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 
 export const useMessageService = () => {
   const api = useAPI().message;
+  const uploadApi = useAPI().upload;
 
   const { messages, meta, setMessages, prependMessages, addMessage } =
     useMessageStore((s) => s);
@@ -75,8 +77,12 @@ export const useMessageService = () => {
 
         // Chạy song song nhưng đợi cả 2 xong
         const [imgRes, docRes] = await Promise.all([
-          images.length > 0 ? api.uploadImages(createFormData(images)) : null,
-          docs.length > 0 ? api.uploadDocuments(createFormData(docs)) : null,
+          images.length > 0
+            ? uploadApi.uploadImages(createFormData(images))
+            : null,
+          docs.length > 0
+            ? uploadApi.uploadDocuments(createFormData(docs))
+            : null,
         ]);
 
         if (imgRes) attachments.push(...imgRes.data.uploadedImages);
@@ -98,8 +104,10 @@ export const useMessageService = () => {
       useConversationStore.getState().bumpConversation(newMessage);
       addMessage(newMessage as any);
     },
-    onError: (error) => {
-      // Xử lý báo lỗi gửi tin nhắn
+    onError: (error: any, variables: any) => {
+      const { tempId } = variables;
+      useMessageStore.getState().updateMessageStatus(tempId, "failed");
+      console.error("Lỗi khi gửi tin nhắn:", error);
     },
   });
 

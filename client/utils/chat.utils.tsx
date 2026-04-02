@@ -1,5 +1,5 @@
-import { Conversation, Reaction, User, Message } from "@/types";
-import { Check, CheckCheck, Loader, X } from "lucide-react";
+import { Conversation, Reaction, User, Message, TypingUser } from "@/types";
+import { Ban, Check, CheckCheck, Loader } from "lucide-react";
 import { JSX } from "react";
 
 /**
@@ -55,16 +55,16 @@ function getPreview(c: Conversation, me: User | null): string {
   const attachmentsLength = lm.attachments?.length || 0;
   switch (lm.type) {
     case "image":
-      return `${prefix} Sent ${attachmentsLength > 0 ? attachmentsLength + " photos" : "a photo"}`;
+      return `${prefix} Sent ${attachmentsLength > 1 ? attachmentsLength + " photos" : "a photo"}`;
     case "file":
-      return `${prefix} Sent ${attachmentsLength > 0 ? attachmentsLength + " files" : "a file"}`;
+      return `${prefix} Sent ${attachmentsLength > 1 ? attachmentsLength + " files" : "a file"}`;
     default:
       return prefix + (lm.content || "Sent a message");
   }
 }
 
 function getStatusMessage(m: Message): {label: string; icon: JSX.Element} {
-  if (m.status === "failed") return { label: "Failed to send", icon: <X size={14} /> };
+  if (m.status === "failed") return { label: "Failed to send", icon: <Ban  size={14} /> };
   if (m.status === "sending") return { label: "Sending...", icon: <Loader className="animate-spin" size={14} /> };
   if (m.isDelivered) return { label: "Delivered", icon: <CheckCheck size={14} /> };
   return { label: "Sent", icon: <Check size={14} /> };
@@ -77,17 +77,26 @@ function fmtTime(iso?: string | Date): string {
   if (!iso) return "";
   const d = new Date(iso);
   const now = new Date();
-  const diffInSecs = (now.getTime() - d.getTime()) / 1000;
+  
+  // Tính toán khoảng cách thời gian
+  const diffInSecs = Math.floor((now.getTime() - d.getTime()) / 1000);
+  
+  // Reset về 00:00:00 để tính số ngày chính xác (tránh lỗi lệch múi giờ)
+  const dDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffInDays = Math.floor((nowDate.getTime() - dDate.getTime()) / (1000 * 3600 * 24));
 
+  // 1. Dưới 1 phút: vừa xong
   if (diffInSecs < 60) return "just now";
 
+  // 2. Dưới 1 giờ: số phút trước
   if (diffInSecs < 3600) {
     const mins = Math.floor(diffInSecs / 60);
     return `${mins}m ago`;
   }
 
-  // If today: 14:30
-  if (d.toDateString() === now.toDateString()) {
+  // 3. Trong ngày hôm nay: 14:30
+  if (diffInDays === 0) {
     return d.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
@@ -95,16 +104,27 @@ function fmtTime(iso?: string | Date): string {
     });
   }
 
-  // If this year: 12/05
-  if (d.getFullYear() === now.getFullYear()) {
-    return d.toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" });
+  // 4. Hôm qua: Yesterday
+  if (diffInDays === 1) return "Yesterday";
+
+  // 5. Từ 2 đến 7 ngày trước: 2d ago, 3d ago...
+  if (diffInDays < 7) {
+    return `${diffInDays}d ago`;
   }
 
-  // If older: 2023/12/05
+  // 6. Trong cùng năm: 12/05
+  if (d.getFullYear() === now.getFullYear()) {
+    return d.toLocaleDateString("en-US", { 
+      month: "2-digit", 
+      day: "2-digit" 
+    });
+  }
+
+  // 7. Khác năm: 12/05/2023
   return d.toLocaleDateString("en-US", {
-    year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    year: "numeric",
   });
 }
 
@@ -137,6 +157,13 @@ function fmtSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
+const getTypingText = (users: TypingUser[]) => {
+  if (users.length === 0) return "";
+  if (users.length === 1) return `${users[0].name} is typing`;
+  if (users.length === 2) return `${users[0].name} and ${users[1].name} are typing`;
+  return `${users[0].name}, ${users[1].name} and ${users.length - 2} others are typing`;
+};
+
 export {
   fmtTime,
   getPreview,
@@ -147,4 +174,5 @@ export {
   fmtSize,
   groupReactions,
   getStatusMessage,
+  getTypingText,
 };

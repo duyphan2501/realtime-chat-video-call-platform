@@ -11,6 +11,7 @@ import {
   getOtherId,
   getPreview,
 } from "@/utils/chat.utils";
+import { getAvatar } from "@/utils/user.utils";
 
 interface ConversationItemProps {
   conv: Conversation;
@@ -42,10 +43,7 @@ const ConversationItem = ({
       {/* Avatar */}
       <div className="relative shrink-0">
         <img
-          src={
-            avatar ||
-            `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=e3e8f0&color=0068FF&bold=true&size=40`
-          }
+          src={getAvatar({ name, avatar })}
           alt={name}
           className="w-11 h-11 rounded-full object-cover"
         />
@@ -55,35 +53,24 @@ const ConversationItem = ({
             style={{ background: "var(--color-online)" }}
           />
         )}
-        {conv.type === "group" && (
-          <span
-            className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px]"
-            style={{ background: "var(--color-primary)", color: "white" }}
-          >
-            {conv.participants.length}
-          </span>
-        )}
       </div>
 
       {/* Info */}
-      <div className={`flex-1 min-w-0 ${conv.unreadCount > 0 ? "font-semibold text-white" : "text-white/80"}`}>
+      <div
+        className={`flex-1 min-w-0 ${conv.unreadCount > 0 ? "font-semibold text-white" : "text-white/80"}`}
+      >
         <div className="flex items-center justify-between mb-0.5">
           <span className="font-semibold text-sm truncate text-white">
             {name}
           </span>
           {conv.lastMessage && (
-            <span
-              className="text-[11px] ml-2 shrink-0"
-            >
+            <span className="text-[11px] ml-2 shrink-0">
               {fmtTime(conv.updatedAt)}
             </span>
           )}
         </div>
         <div className="flex items-center justify-between">
-          <span
-            className="text-xs truncate"
-            
-          >
+          <span className="text-xs truncate">
             {getPreview(conv, currentUser)}
           </span>
           {conv.unreadCount > 0 && (

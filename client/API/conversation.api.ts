@@ -17,4 +17,10 @@ export const conversationAPI = (axiosPrivate: AxiosInstance) => ({
     ),
   markAsRead: (conversationId: string) =>
     axiosPrivate.post(`/conversations/${conversationId}/read`),
+  createConversation: (payload: {
+    participantIds: string[];
+    type: string;
+    name?: string;
+    avatar?: { url: string; publicId: string };
+  }) => axiosPrivate.post("/conversations/create", payload),
 });

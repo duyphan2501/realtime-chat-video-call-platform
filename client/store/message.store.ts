@@ -35,6 +35,7 @@ interface MessageState {
   // UI Helpers
   setReplyingTo: (m: Message | null) => void;
   clearCache: (cid: string) => void;
+  updateMessageStatus: (tempId: string, status: "failed" | "sent") => void;
 }
 
 const MAX_CONVERSATIONS_IN_RAM = 5; // Giới hạn số hội thoại lưu trong RAM
@@ -95,9 +96,9 @@ export const useMessageStore = create<MessageState>((set) => ({
         const oldMsg = updatedMsgs[existsIndex];
         updatedMsgs[existsIndex] = {
           ...oldMsg,
-          _id: msg._id, 
-          status: "sent", 
-          createdAt: msg.createdAt, 
+          _id: msg._id,
+          status: "sent",
+          createdAt: msg.createdAt,
         };
         return {
           messages: { ...s.messages, [cid]: updatedMsgs },
@@ -169,5 +170,21 @@ export const useMessageStore = create<MessageState>((set) => ({
         meta: nextMeta,
         activeOrder: s.activeOrder.filter((id) => id !== cid),
       };
+    }),
+
+  updateMessageStatus: (tempId, status) =>
+    set((s) => {
+      const nextMessages = { ...s.messages };
+      for (const cid in nextMessages) {
+        const msgs = nextMessages[cid];
+        const msgIndex = msgs.findIndex(
+          (m) => m._id === tempId || m.tempId === tempId,
+        );
+        if (msgIndex !== -1) {
+          msgs[msgIndex] = { ...msgs[msgIndex], status };
+          break; 
+        }
+      }
+      return { messages: nextMessages };
     }),
 }));

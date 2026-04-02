@@ -12,11 +12,13 @@ export function useChatHandlers(socket: Socket | null) {
       useConversationStore
         .getState()
         .bumpConversation(data.newMessage, data.unreadCount);
+
+      if (data.newMessage.type === "system") return;
       socket.emit("message:received", {
         messageId: data.newMessage._id,
         senderId: data.newMessage.sender._id,
         conversationId: data.newMessage.conversation,
-        tempId: data.newMessage.tempId, 
+        tempId: data.newMessage.tempId,
       });
     };
 
@@ -61,27 +63,37 @@ export function useChatHandlers(socket: Socket | null) {
         .updateSeen(conversationId, userId, lastRead);
     };
 
-    const onGroupCreated = (newConv: any) => {
+    const onNewConversation = (newConv: any) => {
       useConversationStore.getState().addConversation(newConv);
     };
 
-    const onMessageReceived = ({ messageId, conversationId, tempId }: { messageId: string; conversationId: string; tempId: string }) => {
-      useMessageStore.getState().markAsDelivered(messageId, conversationId, tempId);
-    }
+    const onMessageReceived = ({
+      messageId,
+      conversationId,
+      tempId,
+    }: {
+      messageId: string;
+      conversationId: string;
+      tempId: string;
+    }) => {
+      useMessageStore
+        .getState()
+        .markAsDelivered(messageId, conversationId, tempId);
+    };
 
     socket.on("message:new", onMessageNew);
     socket.on("message:reaction", onMessageReaction);
     socket.on("message:deleted", onMessageDeleted);
     socket.on("message:seen", onMessageSeen);
     socket.on("message:received", onMessageReceived);
-    socket.on("group:created", onGroupCreated);
+    socket.on("conversation:new", onNewConversation);
 
     return () => {
       socket.off("message:new", onMessageNew);
       socket.off("message:reaction", onMessageReaction);
       socket.off("message:deleted", onMessageDeleted);
       socket.off("message:seen", onMessageSeen);
-      socket.off("group:created", onGroupCreated);
+      socket.off("conversation:new", onNewConversation);
     };
   }, [socket]);
 }

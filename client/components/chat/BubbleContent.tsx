@@ -15,7 +15,7 @@ export default function BubbleContent({
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const bubbleBase: React.CSSProperties = {
-    borderRadius: isMe ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+    borderRadius: isMe ? "14px 14px 0px 14px" : "14px 14px 14px 0px",
     maxWidth: "100%",
     wordBreak: "break-word",
     background: isMe ? "var(--color-brand)" : "var(--color-gray)",

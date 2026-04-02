@@ -19,6 +19,7 @@ interface ConversationState {
   bumpConversation: (msg: Message, newUnreadCount?: number) => void;
   markAsRead: (id: string) => void;
   updateSeen: (cid: string, userId: string, lastRead?: Date) => void;
+  getParticipantUser: (cid: string, userId: string) => any;
 }
 
 export const useConversationStore = create<ConversationState>((set) => ({
@@ -76,6 +77,7 @@ export const useConversationStore = create<ConversationState>((set) => ({
           content: msg.content || "",
           sender: msg.sender,
           type: msg.type,
+          attachments: msg.attachments,
           createdAt: msg.createdAt,
         },
         unreadCount:
@@ -127,4 +129,11 @@ export const useConversationStore = create<ConversationState>((set) => ({
 
       return { conversations: newMap };
     }),
+
+  getParticipantUser: (cid, userId) => {
+    const conv = useConversationStore.getState().conversations.get(cid);
+    if (!conv) return null;
+    const participant = conv.participants.find((p) => p.user._id === userId);
+    return participant ? participant.user : null;
+  },
 }));

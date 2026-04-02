@@ -13,6 +13,7 @@ userRouter.put("/me", userController.updateMe);
 
 /* ── Search ────────────────────────────────────────── */
 userRouter.get("/search", userController.searchUsers);
+userRouter.get("/search/friends", userController.searchOnlyFriends);
 
 /* ── Friends ──────────────────────────────────────── */
 userRouter.get("/friends", userController.getFriends);

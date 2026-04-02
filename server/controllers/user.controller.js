@@ -1,6 +1,7 @@
 import UserModel from "../models/user.model.js";
 import createHttpError from "http-errors";
 import { filterFieldUser } from "../utils/filter.util.js";
+import { UserService } from "../services/user.service.js";
 
 /* ═══════════════════════════════════════════════════════════
    GET /users/me
@@ -30,7 +31,7 @@ export const updateMe = async (req, res, next) => {
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
       { name, bio, phone },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("-password");
 
     if (!updatedUser) throw createHttpError.NotFound("User not found");
@@ -67,11 +68,14 @@ export const searchUsers = async (req, res, next) => {
       .limit(Number(limit));
 
     // Get current user's friend list to determine friendStatus
-    const currentUser = await UserModel.findById(userId).select("friends friendRequestsSent");
-    const friendIds = currentUser?.friends?.map(id => id.toString()) || [];
-    const sentToIds = currentUser?.friendRequestsSent?.map(r => r.to?.toString()) || [];
+    const currentUser = await UserModel.findById(userId).select(
+      "friends friendRequestsSent",
+    );
+    const friendIds = currentUser?.friends?.map((id) => id.toString()) || [];
+    const sentToIds =
+      currentUser?.friendRequestsSent?.map((r) => r.to?.toString()) || [];
 
-    const usersWithStatus = users.map(user => {
+    const usersWithStatus = users.map((user) => {
       const userObj = user.toObject();
       if (friendIds.includes(user._id.toString())) {
         userObj.friendStatus = "friend";
@@ -120,10 +124,12 @@ export const getFriendRequests = async (req, res, next) => {
       .populate("friendRequestsReceived.from", "-password")
       .select("friendRequestsReceived");
 
-    const requests = (user?.friendRequestsReceived || []).map(req => ({
-      ...req.from?.toObject(),
-      friendStatus: "received",
-    })).filter(r => r._id);
+    const requests = (user?.friendRequestsReceived || [])
+      .map((req) => ({
+        ...req.from?.toObject(),
+        friendStatus: "received",
+      }))
+      .filter((r) => r._id);
 
     res.status(200).json({
       success: true,
@@ -142,9 +148,12 @@ export const sendFriendRequest = async (req, res, next) => {
     const userId = req.user.userId;
     const { userId: targetUserId } = req.params;
 
-    if (!targetUserId) throw createHttpError.BadRequest("Target user ID is required");
+    if (!targetUserId)
+      throw createHttpError.BadRequest("Target user ID is required");
     if (userId === targetUserId) {
-      throw createHttpError.BadRequest("Cannot send friend request to yourself");
+      throw createHttpError.BadRequest(
+        "Cannot send friend request to yourself",
+      );
     }
 
     const targetUser = await UserModel.findById(targetUserId);
@@ -157,7 +166,7 @@ export const sendFriendRequest = async (req, res, next) => {
 
     // Check if request already sent
     const alreadySent = targetUser.friendRequestsReceived?.some(
-      req => req.from?.toString() === userId
+      (req) => req.from?.toString() === userId,
     );
     if (alreadySent) {
       throw createHttpError.Conflict("Friend request already sent");
@@ -166,15 +175,15 @@ export const sendFriendRequest = async (req, res, next) => {
     // Add to sent requests (current user)
     await UserModel.findByIdAndUpdate(userId, {
       $addToSet: {
-        friendRequestsSent: { to: targetUserId, createdAt: new Date() }
-      }
+        friendRequestsSent: { to: targetUserId, createdAt: new Date() },
+      },
     });
 
     // Add to received requests (target user)
     await UserModel.findByIdAndUpdate(targetUserId, {
       $addToSet: {
-        friendRequestsReceived: { from: userId, createdAt: new Date() }
-      }
+        friendRequestsReceived: { from: userId, createdAt: new Date() },
+      },
     });
 
     res.status(200).json({ success: true, message: "Friend request sent" });
@@ -191,21 +200,22 @@ export const acceptFriendRequest = async (req, res, next) => {
     const userId = req.user.userId;
     const { userId: senderId } = req.params;
 
-    if (!senderId) throw createHttpError.BadRequest("Sender user ID is required");
+    if (!senderId)
+      throw createHttpError.BadRequest("Sender user ID is required");
 
     // Remove from received requests
     await UserModel.findByIdAndUpdate(userId, {
-      $pull: { friendRequestsReceived: { from: senderId } }
+      $pull: { friendRequestsReceived: { from: senderId } },
     });
 
     // Add to friends both ways
     await UserModel.findByIdAndUpdate(userId, {
-      $addToSet: { friends: senderId }
+      $addToSet: { friends: senderId },
     });
 
     await UserModel.findByIdAndUpdate(senderId, {
       $addToSet: { friends: userId },
-      $pull: { friendRequestsSent: { to: userId } }
+      $pull: { friendRequestsSent: { to: userId } },
     });
 
     res.status(200).json({ success: true, message: "Friend request accepted" });
@@ -222,16 +232,17 @@ export const rejectFriendRequest = async (req, res, next) => {
     const userId = req.user.userId;
     const { userId: senderId } = req.params;
 
-    if (!senderId) throw createHttpError.BadRequest("Sender user ID is required");
+    if (!senderId)
+      throw createHttpError.BadRequest("Sender user ID is required");
 
     // Remove from received requests
     await UserModel.findByIdAndUpdate(userId, {
-      $pull: { friendRequestsReceived: { from: senderId } }
+      $pull: { friendRequestsReceived: { from: senderId } },
     });
 
     // Remove from their sent requests
     await UserModel.findByIdAndUpdate(senderId, {
-      $pull: { friendRequestsSent: { to: userId } }
+      $pull: { friendRequestsSent: { to: userId } },
     });
 
     res.status(200).json({ success: true, message: "Friend request rejected" });
@@ -248,18 +259,37 @@ export const unfriend = async (req, res, next) => {
     const userId = req.user.userId;
     const { userId: friendId } = req.params;
 
-    if (!friendId) throw createHttpError.BadRequest("Friend user ID is required");
+    if (!friendId)
+      throw createHttpError.BadRequest("Friend user ID is required");
 
     // Remove from both users' friend lists
     await UserModel.findByIdAndUpdate(userId, {
-      $pull: { friends: friendId }
+      $pull: { friends: friendId },
     });
 
     await UserModel.findByIdAndUpdate(friendId, {
-      $pull: { friends: userId }
+      $pull: { friends: userId },
     });
 
     res.status(200).json({ success: true, message: "Unfriend successful" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const searchOnlyFriends = async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const { searchTerm, limit } = req.query;
+    if (!searchTerm) {
+      return res.status(400).json({ message: "Search term is required" });
+    }
+    const friends = await UserService.searchOnlyFriends(
+      userId,
+      searchTerm,
+      parseInt(limit),
+    );
+    res.json(friends);
   } catch (error) {
     next(error);
   }

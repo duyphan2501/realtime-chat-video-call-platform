@@ -18,16 +18,21 @@ export function usePresenceHandlers(socket: Socket | null) {
       userId: string;
       timestamp: Date;
     }) => {
-      usePresenceStore.getState().setOnline(userId, false);
+      usePresenceStore.getState().setOnline(userId, false, timestamp);
     };
 
     const onTypingStart = ({
       conversationId,
-      user,
+      userId,
     }: {
       conversationId: string;
-      user: TypingUser;
-    }) => usePresenceStore.getState().setTyping(conversationId, user);
+      userId: string;
+    }) => {
+      const user = useConversationStore
+        .getState()
+        .getParticipantUser(conversationId, userId);
+      if (user) usePresenceStore.getState().setTyping(conversationId, user);
+    };
 
     const onTypingStop = ({
       conversationId,

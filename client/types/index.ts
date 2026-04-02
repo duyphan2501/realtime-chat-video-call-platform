@@ -105,6 +105,6 @@ export interface IncomingCall {
 
 export interface TypingUser {
   _id: string;
-  fullName: string;
+  name: string;
   avatar: string;
 }

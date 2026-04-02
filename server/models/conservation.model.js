@@ -17,12 +17,12 @@ const conversationSchema = new mongoose.Schema(
     type: { type: String, enum: ["direct", "group"], required: true },
     participants: { type: [participantSchema], required: true },
     name: { type: String, trim: true },
-    avatar: { type: String },
+    avatar: { url: String, publicId: String },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     lastMessage: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
     lastMessageAt: { type: Date },
   },
-  { timestamps: true },
+  { timestamps: true},
 );
 
 conversationSchema.index({ "participants.user": 1, lastMessageAt: -1 });

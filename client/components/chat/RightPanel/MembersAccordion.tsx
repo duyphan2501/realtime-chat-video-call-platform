@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Accordion from "./Accordion";
 import { Conversation, Participant, User } from "@/types";
-import { Search, Users } from "lucide-react";
+import { Ellipsis, Search, Users } from "lucide-react";
+import { getAvatar } from "@/utils/user.utils";
 
 interface MembersAccordionProps {
   conversation: Conversation;
@@ -24,17 +25,39 @@ const ROLE_BADGE: Record<
   member: null,
 };
 
-export default function MembersAccordion({ conversation }: MembersAccordionProps) {
+const actions = [
+  { label: "View Profile", onClick: () => {} },
+  { label: "Send Message", onClick: () => {} },
+  { label: "Make Admin", onClick: () => {} },
+  { label: "Remove from Group", onClick: () => {} },
+];
 
+export default function MembersAccordion({
+  conversation,
+}: MembersAccordionProps) {
   if (conversation.type === "direct") {
     return null; // Don't show members accordion for direct messages
   }
 
   const [query, setQuery] = useState("");
+  const [showActions, setShowActions] = useState<string | null>(null);
 
-  const filteredMembers = conversation.participants.filter((p) =>
-    p.user.name.toLowerCase().includes(query.toLowerCase())
-  );
+  const filteredMembers = useMemo(() => {
+    return conversation.participants.filter((p) =>
+      p.user.name.toLowerCase().includes(query.toLowerCase()),
+    );
+  }, [conversation.participants, query]);
+
+  const handleToggleActions = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setShowActions(showActions === id ? null : id);
+  };
+
+  useEffect(() => {
+    const handleClose = () => setShowActions(null);
+    window.addEventListener("click", handleClose);
+    return () => window.removeEventListener("click", handleClose);
+  }, []);
 
   return (
     <Accordion
@@ -70,11 +93,13 @@ export default function MembersAccordion({ conversation }: MembersAccordionProps
                 <div className="relative">
                   <div
                     className="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-10 w-10 shadow-sm"
-                    style={{ backgroundImage: `url("${participant.user.avatar}")` }}
+                    style={{
+                      backgroundImage: `url("${getAvatar(participant.user)}")`,
+                    }}
                     role="img"
                     aria-label={participant.user.name}
                   />
-                  {/* Assuming User has an actual status field */} 
+                  {/* Assuming User has an actual status field */}
                   {/* {participant.user.status && ( 
                     <div 
                       className={`absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-white dark:border-[#111118] ${STATUS_DOT[participant.user.status]}`} 
@@ -83,7 +108,9 @@ export default function MembersAccordion({ conversation }: MembersAccordionProps
                 </div>
                 <div className="flex flex-col flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">{participant.user.name}</p>
+                    <p className="text-sm font-medium">
+                      {participant.user.name}
+                    </p>
                     {badge && (
                       <span
                         className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide ${badge.className}`}
@@ -94,8 +121,27 @@ export default function MembersAccordion({ conversation }: MembersAccordionProps
                   </div>
                   {/* <p className="text-[11px] text-slate-400">{member.statusText}</p> */}
                 </div>
-                <span className="material-symbols-outlined text-slate-300 opacity-0 group-hover/item:opacity-100 cursor-pointer transition-opacity">
-                  more_horiz
+                <span
+                  className="material-symbols-outlined text-slate-300 cursor-pointer transition-opacity p-1 rounded-full hover:bg-gray active:bg-gray/80 relative"
+                  onClick={(e) => handleToggleActions(e, participant.user._id)}
+                >
+                  <Ellipsis />
+                  {showActions === participant.user._id && (
+                    <div className="absolute right-0 top-full mt-1 w-40 bg-gray rounded-lg shadow-lg py-1 z-10 cursor-pointer">
+                      {actions.map((action) => (
+                        <button
+                          key={action.label}
+                          onClick={() => {
+                            action.onClick();
+                            setShowActions(null);
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm cursor-pointer hover:bg-primary/30 transition-colors z-20"
+                        >
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </span>
               </div>
             );

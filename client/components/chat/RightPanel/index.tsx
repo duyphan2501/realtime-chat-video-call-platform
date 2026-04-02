@@ -49,7 +49,9 @@ export default function RightPanel({ conversationId, onClose }: Props) {
         </div>
 
         <div className="flex flex-col divide-y divide-gray">
-          <MembersAccordion conversation={conversation} />
+          <MembersAccordion 
+            conversation={conversation} 
+          />
           <SharedMediaAccordion conversationId={conversation._id} />
           <DocumentsAccordion conversationId={conversation._id} />
         </div>

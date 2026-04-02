@@ -21,9 +21,4 @@ export const messageAPI = (axiosPrivate: AxiosInstance) => ({
     tempId: string;
     attachments: string[];
   }) => axiosPrivate.post("/messages/send", payload),
-
-  uploadImages: (formData: FormData) =>
-    axiosPrivate.post("/messages/upload-images", formData),
-  uploadDocuments: (formData: FormData) =>
-    axiosPrivate.post("/messages/upload-documents", formData),
 });

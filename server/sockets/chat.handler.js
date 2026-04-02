@@ -126,4 +126,18 @@ export default (io, socket) => {
       lastRead,
     });
   });
+
+  socket.on("typing:start", ({ conversationId }) => {
+    socket.to(`conversation_${conversationId}`).emit("typing:start", {
+      conversationId,
+      userId: socket.userId,
+    });
+  });
+
+  socket.on("typing:stop", ({ conversationId }) => {
+    socket.to(`conversation_${conversationId}`).emit("typing:stop", {
+      conversationId,
+      userId: socket.userId,
+    });
+  });
 };

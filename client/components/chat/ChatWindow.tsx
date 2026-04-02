@@ -1,13 +1,3 @@
-/* ═══════════════════════════════════════════════════════════
-   components/chat/ChatWindow.tsx
-
-   TODO — backend:
-   ① Load messages: conversationApi.getMessages()
-   ② Send: conversationApi.sendMessage() + emit socket
-   ③ Mark seen: emit socket "message:seen"
-   ④ Load more (infinite scroll): pagination từ API
-   ⑤ WebRTC call: startCall từ useWebRTC
-   ═══════════════════════════════════════════════════════════ */
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { Conversation, Message, User } from "@/types";
@@ -22,11 +12,17 @@ import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
 import { useShallow } from "zustand/shallow";
 import DateDivider from "../DateDivider";
-import { fmtTime, getOtherId, sameDay } from "@/utils/chat.utils";
+import {
+  fmtTime,
+  getOtherId,
+  getTypingText,
+  sameDay,
+} from "@/utils/chat.utils";
 import { Info, Phone, Search, Video } from "lucide-react";
 import IconBtn from "../IconBtn";
 import { useConversationService, useMessageService } from "@/services";
 import RightPanel from "./RightPanel";
+import { getAvatar } from "@/utils/user.utils";
 
 interface Props {
   conversation: Conversation;
@@ -41,6 +37,7 @@ export default function ChatWindow({
 }: Props) {
   const [isRightPanelOpen, setRightPanelOpen] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // "force" = mới mở conv → scroll instant, không check vị trí
   // "smooth" = vừa gửi / nhận tin khi đang ở cuối → scroll mượt
@@ -221,13 +218,16 @@ export default function ChatWindow({
 
       addMessage(optimisticMsg as any);
       scrollIntent.current = "smooth";
-
-      await sendMessage({
-        conversationId: conv._id,
-        content,
-        files,
-        tempId,
-      });
+      try {
+        await sendMessage({
+          conversationId: conv._id,
+          content,
+          files,
+          tempId,
+        });
+      } catch (error: any) {
+        setError(error.message || "Failed to send message");
+      }
     },
     [conv._id],
   );
@@ -240,8 +240,10 @@ export default function ChatWindow({
   const memberCount = conv.participants.length;
 
   const otherUserId = other?._id;
-  const isOtherOnline =
-    !isGroup && usePresenceStore((s) => s.isOnline(otherUserId || ""));
+  const isOtherOnlineRaw = usePresenceStore((s) =>
+    s.isOnline(otherUserId || ""),
+  );
+  const isOtherOnline = !isGroup && isOtherOnlineRaw;
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -251,10 +253,10 @@ export default function ChatWindow({
           <div className="flex items-center gap-3">
             <div className="relative">
               <img
-                src={
-                  headerAvatar ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(headerName || "G")}&background=e3e8f0&color=0068FF&bold=true&size=40`
-                }
+                src={getAvatar({
+                  name: headerName || "User",
+                  avatar: headerAvatar,
+                })}
                 className="w-10 h-10 rounded-full object-cover"
                 alt={headerName}
               />
@@ -326,7 +328,11 @@ export default function ChatWindow({
           {messages.map((msg, i) => {
             const isMe = msg.sender._id === currentUser._id;
             const prev = messages[i - 1];
-            const isSameSender = prev?.sender._id === msg.sender._id;
+            const isSameSenderAsPrev =
+              prev &&
+              prev.type !== "system" &&
+              prev?.sender._id === msg.sender._id;
+            const shouldShowAvatar = !isMe && !isSameSenderAsPrev;
             const showDate = !prev || !sameDay(prev.createdAt, msg.createdAt);
             const isLast = i === messages.length - 1;
             return (
@@ -335,7 +341,7 @@ export default function ChatWindow({
                 <MessageBubble
                   message={msg}
                   isMe={isMe}
-                  showAvatar={!isSameSender}
+                  showAvatar={shouldShowAvatar}
                   convId={conv._id}
                   currentUserId={sender?._id || ""}
                   isLast={isLast}
@@ -347,30 +353,20 @@ export default function ChatWindow({
 
           {/* Typing indicator */}
           {typingUsers.length > 0 && (
-            <div className="flex items-center gap-2 mt-1">
-              <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
-                <img
-                  src={typingUsers[0].avatar || ""}
-                  className="w-full h-full object-cover"
-                  alt=""
-                />
-              </div>
-              <div
-                className="flex items-center gap-1 px-4 py-3 rounded-2xl"
-                style={{ background: "var(--color-surface)" }}
-              >
-                <span
-                  className="dot-1 w-1.5 h-1.5 rounded-full inline-block"
-                  style={{ background: "var(--color-ink-4)" }}
-                />
-                <span
-                  className="dot-2 w-1.5 h-1.5 rounded-full inline-block"
-                  style={{ background: "var(--color-ink-4)" }}
-                />
-                <span
-                  className="dot-3 w-1.5 h-1.5 rounded-full inline-block"
-                  style={{ background: "var(--color-ink-4)" }}
-                />
+            <div className="flex flex-col gap-1 mt-2 ml-2">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  {/* Chữ text nhỏ phía dưới */}
+                  <span className="text-[11px] text-gray-200 ml-1 italic animate-pulse">
+                    {getTypingText(typingUsers)}
+                  </span>
+                  {/* Bubble hiệu ứng 3 chấm */}
+                  <div className="flex items-center gap-1">
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                  </div>
+                </div>
               </div>
             </div>
           )}

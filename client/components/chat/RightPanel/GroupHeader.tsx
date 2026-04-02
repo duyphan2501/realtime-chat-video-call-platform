@@ -3,6 +3,7 @@
 import { usePresenceStore } from "@/store";
 import { Conversation, User } from "@/types";
 import { fmtTime } from "@/utils/chat.utils";
+import { getAvatar } from "@/utils/user.utils";
 import { Search, Settings, SquarePen, UserPen, UserPlus } from "lucide-react";
 
 interface GroupHeaderProps {
@@ -26,7 +27,6 @@ export default function GroupHeader({ conversation }: GroupHeaderProps) {
   const otherUser = isGroup ? undefined : conversation.otherUser;
   const isOnline = usePresenceStore((s) => s.isOnline);
   const onlineUsers = usePresenceStore((s) => s.onlineUsers);
-  console.log(otherUser)
   return (
     <div className="flex flex-col items-center p-8 border-b  border-[#1c1c2d]">
       <div className="relative mb-4">
@@ -37,9 +37,12 @@ export default function GroupHeader({ conversation }: GroupHeaderProps) {
             isGroup ? conversation.name : otherUser?.name
           } group avatar`}
           style={{
-            backgroundImage: `url("${
-              isGroup ? conversation.avatar : otherUser?.avatar
-            }")`,
+            backgroundImage: `url("${getAvatar({
+              name: isGroup
+                ? conversation.name || "Unnamed Group"
+                : otherUser?.name || "Unknown User",
+              avatar: isGroup ? conversation.avatar : otherUser?.avatar,
+            })}")`,
           }}
         />
         {isGroup && (
