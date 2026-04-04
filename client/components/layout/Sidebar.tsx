@@ -12,6 +12,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuthStore } from "@/store";
+import { getAvatar } from "@/utils/user.utils";
 
 const NAV_ITEMS = [
   {
@@ -56,10 +57,10 @@ export default function Sidebar() {
       {/* Avatar */}
       <div className="relative mb-3 mt-1 cursor-pointer group">
         <img
-          src={
-            currentUser?.avatar ||
-            `https://ui-avatars.com/api/?name=U&background=fff&color=0068FF&bold=true&size=40`
-          }
+          src={getAvatar({
+            avatar: currentUser?.avatar,
+            name: currentUser?.name ?? "",
+          })}
           alt="avatar"
           className="w-10 h-10 rounded-full object-cover ring-2 ring-white/25"
         />

@@ -1,13 +1,11 @@
 import express from "express";
-import { getMe, googleLogin, handleRefreshToken, login, logout } from "../controllers/auth.controller.js";
 import { checkAuth } from "../middlewares/auth.middleware.js";
+import { AuthController } from "../controllers/index.js";
 
-const authRouter = express.Router();
+export const authRouter = express.Router();
 
-authRouter.post("/login", login);
-authRouter.post("/google", googleLogin);
-authRouter.get("/me", checkAuth, getMe);
-authRouter.delete("/logout", logout);
-authRouter.put("/refresh-token", handleRefreshToken);
-
-export default authRouter;
+authRouter.post("/login", AuthController.login);
+authRouter.post("/google", AuthController.googleLogin);
+authRouter.get("/me", checkAuth, AuthController.getMe);
+authRouter.delete("/logout", AuthController.logout);
+authRouter.put("/refresh-token", AuthController.handleRefreshToken);

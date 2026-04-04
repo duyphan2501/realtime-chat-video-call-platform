@@ -1,12 +1,7 @@
-import { generateAccessTokenAndSetCookies } from "../helpers/auth.helper.js";
-import {
-  getUserById,
-  googleLoginService,
-  loginService,
-  refreshTokenService,
-} from "../services/auth.service.js";
+import { AuthService } from "../services/index.js";
 import createHttpError from "http-errors";
 import { filterFieldUser } from "../utils/filter.util.js";
+import { generateAccessTokenAndSetCookies } from "../helpers/auth.helper.js";
 
 const login = async (req, res, next) => {
   try {
@@ -15,7 +10,7 @@ const login = async (req, res, next) => {
     if (!email || !password)
       throw createHttpError.BadRequest("Email and password are required!");
 
-    const result = await loginService(email, password);
+    const result = await AuthService.login(email, password);
 
     const accessToken = await generateAccessTokenAndSetCookies(
       res,
@@ -40,7 +35,7 @@ const googleLogin = async (req, res, next) => {
 
     if (!token) throw createHttpError.BadRequest("Token is required!");
 
-    const result = await googleLoginService(token);
+    const result = await AuthService.googleLogin(token);
 
     const accessToken = await generateAccessTokenAndSetCookies(
       res,
@@ -64,7 +59,7 @@ const getMe = async (req, res, next) => {
     const userId = req.user.userId;
     if (!userId) throw createHttpError.BadRequest("Userid is missing");
 
-    const user = await getUserById(userId);
+    const user = await AuthService.getUserById(userId);
     const accessToken = req.cookies.accessToken;
 
     return res.status(200).json({ user: filterFieldUser(user), accessToken });
@@ -91,7 +86,7 @@ const handleRefreshToken = async (req, res, next) => {
     if (!refreshToken)
       throw createHttpError.Unauthorized("No refreshToken provided");
 
-    const result = await refreshTokenService(refreshToken);
+    const result = await AuthService.refreshToken(refreshToken);
 
     const accessToken = await generateAccessTokenAndSetCookies(
       res,
@@ -107,4 +102,10 @@ const handleRefreshToken = async (req, res, next) => {
   }
 };
 
-export { login, googleLogin, getMe, logout, handleRefreshToken };
+export const AuthController = {
+  login,
+  googleLogin,
+  getMe,
+  logout,
+  handleRefreshToken,
+};

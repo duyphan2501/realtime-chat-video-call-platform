@@ -1,11 +1,9 @@
 import express from "express";
 import { checkAuth } from "../middlewares/auth.middleware.js";
-import { getMessages, sendMessage } from "../controllers/message.controller.js";
+import { MessageController } from "../controllers/index.js";
 
-const messageRouter = express.Router();
+export const messageRouter = express.Router();
 messageRouter.use(checkAuth);
 
-messageRouter.get("/:conversationId", getMessages);
-messageRouter.post("/send", sendMessage);
-
-export default messageRouter;
+messageRouter.get("/:conversationId", MessageController.getMessages);
+messageRouter.post("/send", MessageController.sendMessage);

@@ -1,5 +1,5 @@
 import createHttpError from "http-errors";
-import uploadFiles from "../helpers/upload.helper.js";
+import { uploadFiles } from "../helpers/upload.helper.js";
 
 const CHAT_FOLDER_IMAGES = "chat_images";
 const CHAT_FOLDER_DOCUMENTS = "chat_documents";
@@ -58,4 +58,4 @@ const uploadImages = async (req, res, next) => {
   }
 };
 
-export { uploadDocument, uploadImages };
+export const UploadController = { uploadDocument, uploadImages };

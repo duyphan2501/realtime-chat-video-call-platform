@@ -30,4 +30,4 @@ async function uploadFiles(files, options) {
   }
 }
 
-export default uploadFiles;
+export { uploadFiles };

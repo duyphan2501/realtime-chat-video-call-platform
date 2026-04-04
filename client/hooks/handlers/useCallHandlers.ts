@@ -13,6 +13,7 @@ export function useCallHandlers(socket: Socket | null) {
     const onIncoming = (data: any) => {
       const call = useCallStore.getState();
       call.setIncoming(data.incoming);
+      call.setConversationId(data.conversationId);
       call.setCallType(data.callType);
       call.setPeerUser(data.incoming.from);
       call.setStatus("ringing");

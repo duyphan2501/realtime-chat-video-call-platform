@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
-import { ConversationModel } from "../models/conservation.model.js";
-import { MessageModel } from "../models/message.model.js";
+import { ConversationModel, MessageModel } from "../models/index.js";
 import { io } from "../sockets/index.js";
 
 export const ConversationService = {
@@ -128,7 +127,10 @@ export const ConversationService = {
         io.to(`user_${id}`).emit("conversation:new", fullConversation);
 
         // Thông báo có tin nhắn mới (tin nhắn hệ thống)
-        io.to(`user_${id}`).emit("message:new", { newMessage: systemMsg, unreadCount: 1 });
+        io.to(`user_${id}`).emit("message:new", {
+          newMessage: systemMsg,
+          unreadCount: 1,
+        });
       });
     }
 

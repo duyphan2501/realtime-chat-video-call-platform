@@ -15,12 +15,10 @@ const userSchema = new mongoose.Schema(
     isVerified: { type: Boolean, default: false },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
     phone: String,
-    lastActive: {type: Date, default: Date.now},
+    lastActive: { type: Date, default: Date.now },
     bio: String,
   },
-  { timestamps: true, collection: "users" }
+  { timestamps: true, collection: "users" },
 );
 
-const UserModel = mongoose.model("User", userSchema);
-
-export default UserModel;
+export const UserModel = mongoose.model("User", userSchema);

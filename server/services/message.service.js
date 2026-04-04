@@ -1,6 +1,5 @@
-import { ConversationModel } from "../models/conservation.model.js";
-import { MessageModel } from "../models/message.model.js";
-import { io, userSocketMap } from "../sockets/index.js";
+import { ConversationModel, MessageModel } from "../models/index.js";
+import { io } from "../sockets/index.js";
 
 const getMessages = async ({
   conversationId,
@@ -39,6 +38,7 @@ const sendMessage = async ({
   content,
   type,
   attachments,
+  callData,
   tempId,
 }) => {
   // 1. Lưu Message
@@ -48,6 +48,7 @@ const sendMessage = async ({
     content,
     type,
     attachments,
+    callData,
   });
 
   // 2. Cập nhật Conversation & Tăng unreadCount cho những người khác
@@ -76,8 +77,8 @@ const sendMessage = async ({
     const room = `user_${participantId}`;
     if (room) {
       io.to(room).emit("message:new", {
-        newMessage: {...messageData},
-        unreadCount: p.unreadCount, 
+        newMessage: { ...messageData },
+        unreadCount: p.unreadCount,
       });
     }
   });

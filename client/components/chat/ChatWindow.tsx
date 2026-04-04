@@ -243,6 +243,9 @@ export default function ChatWindow({
   const isOtherOnlineRaw = usePresenceStore((s) =>
     s.isOnline(otherUserId || ""),
   );
+  const lastActive = usePresenceStore(
+    (s) => s.onlineUsers[otherUserId || ""]?.lastActive,
+  );
   const isOtherOnline = !isGroup && isOtherOnlineRaw;
 
   return (
@@ -279,7 +282,7 @@ export default function ChatWindow({
                   ? `${memberCount} members`
                   : isOtherOnline
                     ? "Online"
-                    : `Last active ${fmtTime(usePresenceStore.getState().getLastActive(otherUserId || "") || other?.lastActive)}`}
+                    : `Last active ${fmtTime(lastActive || other?.lastActive)}`}
               </p>
             </div>
           </div>

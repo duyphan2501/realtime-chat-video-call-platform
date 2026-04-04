@@ -13,6 +13,7 @@ interface CallStore {
   remoteStream: MediaStream | null;
   role: "caller" | "callee" | null;
   ringStartedAt: number | null;
+  conversationId: string | null;
 
   setStatus: (s: CallStatus) => void;
   setCallType: (t: CallType | null) => void;
@@ -26,6 +27,7 @@ interface CallStore {
   setRole: (r: "caller" | "callee" | null) => void;
   reset: () => void;
   setRingStartedAt: (t: number) => void;
+  setConversationId: (id: string | null) => void;
 }
 
 export const useCallStore = create<CallStore>((set) => ({
@@ -38,6 +40,7 @@ export const useCallStore = create<CallStore>((set) => ({
   startTime: null,
   localStream: null,
   remoteStream: null,
+  conversationId: null,
   role: null,
   ringStartedAt: null,
 
@@ -50,8 +53,9 @@ export const useCallStore = create<CallStore>((set) => ({
   setStartTime: (startTime) => set({ startTime }),
   setLocalStream: (localStream) => set({ localStream }),
   setRemoteStream: (remoteStream) => set({ remoteStream }),
-  setRole: (r) => set({role: r}),
-  setRingStartedAt: (t) => set({ringStartedAt: t}),
+  setRole: (r) => set({ role: r }),
+  setRingStartedAt: (t) => set({ ringStartedAt: t }),
+  setConversationId: (id) => set({ conversationId: id }),
   reset: () =>
     set({
       status: "idle",
@@ -64,5 +68,6 @@ export const useCallStore = create<CallStore>((set) => ({
       localStream: null,
       remoteStream: null,
       role: null,
+      conversationId: null,
     }),
 }));

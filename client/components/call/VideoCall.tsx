@@ -19,6 +19,7 @@ import ConnectingScreen from "./ConnectingScreen";
 import EndedScreen from "./EndedScreen";
 import { formatTime } from "@/utils/call.utils";
 import { CallStatus } from "@/types";
+import { useCallService } from "@/services";
 
 export default function VideoCall() {
   // ── Store (reactive — dùng selector để chỉ re-render khi đúng field thay đổi)
@@ -43,6 +44,8 @@ export default function VideoCall() {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const endedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { endCall: endCallAPI, rejectCall } = useCallService();
 
   // Cleanup timer khi unmount
   useEffect(() => {
@@ -95,26 +98,29 @@ export default function VideoCall() {
   }, [isCamOff, localStream, status]);
 
   // ── Handler khi cuộc gọi kết thúc (dùng getState() vì chỉ cần snapshot tại thời điểm gọi)
-  const handleTerminateCall = ({
+  const handleTerminateCall = async ({
     reason = "ended",
   }: {
     reason: CallStatus;
   }) => {
     if (!callType) return;
     const { setStatus, reset, role } = useCallStore.getState();
-    const event = `call:${reason === "ended" ? "ended" : "rejected"}`;
+    // const event = `call:${reason === "ended" ? "ended" : "rejected"}`;
+    endCall();
+    setStatus(reason);
 
     const payload = {
-      targetUserId: peerUser?._id,
-      ownerId: role !== "caller" ? peerUser?._id : null,
-      conversationId: useConversationStore.getState().activeId,
+      targetUserId: peerUser?._id || "",
+      ownerId: role !== "caller" ? peerUser?._id || "" : null,
+      conversationId: useCallStore.getState().conversationId || "",
       type: callType,
-      ...(reason === "ended" ? { duration } : { status: reason }),
+      // ...(reason === "ended" ? { duration } : { status: reason }),
     };
 
-    endCall();
-    socket?.emit(event, payload);
-    setStatus(reason);
+    const isEnd = reason === "ended";
+    // socket?.emit(event, payload);
+    if (isEnd) await endCallAPI({ ...payload, duration });
+    else await rejectCall({ ...payload, status: reason });
 
     if (endedTimerRef.current) clearTimeout(endedTimerRef.current);
     endedTimerRef.current = setTimeout(() => {

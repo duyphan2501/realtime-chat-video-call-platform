@@ -1,12 +1,10 @@
 import express from "express";
 import { checkAuth } from "../middlewares/auth.middleware.js";
-import { createConversation, getConversations, markAsRead } from "../controllers/conversation.controller.js";
+import { ConversationController } from "../controllers/index.js";
 
-const conversationRouter = express.Router();
-conversationRouter.use(checkAuth)
+export const conversationRouter = express.Router();
+conversationRouter.use(checkAuth);
 
-conversationRouter.get("/", getConversations);
-conversationRouter.post("/:id/read", markAsRead);
-conversationRouter.post("/create", createConversation);
-
-export default conversationRouter;
+conversationRouter.get("/", ConversationController.getConversations);
+conversationRouter.post("/:id/read", ConversationController.markAsRead);
+conversationRouter.post("/create", ConversationController.createConversation);

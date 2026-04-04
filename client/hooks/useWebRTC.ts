@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useCallback } from "react";
-import { useSocketStore, useCallStore } from "@/store";
+import { useSocketStore, useCallStore, useConversationStore } from "@/store";
 import { useShallow } from "zustand/react/shallow";
 import { User } from "@/types";
 
@@ -26,18 +26,20 @@ export function useWebRTC() {
     callType,
     setRole,
     setRingStartedAt,
+    setConversationId,
   } = useCallStore(
     useShallow((s) => ({
       setStatus: s.setStatus,
       setPeerUser: s.setPeerUser,
       setLocalStream: s.setLocalStream,
       setRemoteStream: s.setRemoteStream,
+      setConversationId: s.setConversationId,
       reset: s.reset,
       setCallType: s.setCallType,
       callType: s.callType,
       setStartTime: s.setStartTime,
       setRole: s.setRole,
-      setRingStartedAt: s.setRingStartedAt
+      setRingStartedAt: s.setRingStartedAt,
     })),
   );
 
@@ -139,7 +141,7 @@ export function useWebRTC() {
     async (targetUserId: string, type: "audio" | "video") => {
       try {
         setStatus("connecting");
-        setRole("caller")
+        setRole("caller");
         setCallType(type);
         const conn = createPC();
         const stream = await getSafeMedia(type);
@@ -157,15 +159,19 @@ export function useWebRTC() {
 
         const offer = await conn.createOffer();
         await conn.setLocalDescription(offer);
-        const now = Date.now()
+        const now = Date.now();
+        
+        const conversationId = useConversationStore.getState().activeId;
+        setConversationId(conversationId);
 
         socket?.emit("webrtc:offer", {
           targetUserId,
           offer,
           callType: type,
           startedAt: now,
+          conversationId,
         });
-        setRingStartedAt(now)
+        setRingStartedAt(now);
         setStatus("calling");
       } catch (err) {
         console.error("Start call failed:", err);
@@ -192,7 +198,7 @@ export function useWebRTC() {
           stream.getVideoTracks()[0] ?? createEmptyVideoTrack();
         conn.addTrack(videoTrack, stream);
       }
-      setRole("callee")
+      setRole("callee");
       setPeerUser(incoming.from);
 
       await conn.setRemoteDescription(

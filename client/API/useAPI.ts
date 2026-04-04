@@ -5,6 +5,7 @@ import { conversationAPI } from "@/API/conversation.api";
 import { messageAPI } from "./message.api";
 import { userAPI } from "./user.api";
 import { uploadAPI } from "./upload.api";
+import { callAPI } from "./call.api";
 
 export const useAPI = () => {
   const axios = useAxiosPrivate(); // Hook xử lý lỗi 401 & Refresh Token
@@ -16,6 +17,7 @@ export const useAPI = () => {
       message: messageAPI(axios),
       user: userAPI(axios),
       upload: uploadAPI(axios),
+      call: callAPI(axios),
     }),
     [axios],
   );

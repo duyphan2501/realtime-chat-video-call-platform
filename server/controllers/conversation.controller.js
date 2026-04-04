@@ -1,5 +1,5 @@
 import createHttpError from "http-errors";
-import { ConversationService } from "../services/conversation.service.js";
+import { ConversationService } from "../services/index.js";
 
 const getConversations = async (req, res, next) => {
   try {
@@ -57,4 +57,4 @@ const createConversation = async (req, res, next) => {
   }
 };
 
-export { getConversations, markAsRead, createConversation };
+export const ConversationController = { getConversations, markAsRead, createConversation };

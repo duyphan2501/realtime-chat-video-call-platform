@@ -1,6 +1,6 @@
 import createHttpError from "http-errors";
-import { MessageService } from "../services/message.service.js";
-import { ConversationService } from "../services/conversation.service.js";
+import { MessageService } from "../services/index.js";
+import { ConversationService } from "../services/index.js";
 
 const getMessages = async (req, res, next) => {
   try {
@@ -70,4 +70,4 @@ const sendMessage = async (req, res, next) => {
   }
 };
 
-export { getMessages, sendMessage };
+export const MessageController = { getMessages, sendMessage };

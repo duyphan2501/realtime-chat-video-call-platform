@@ -1,8 +1,17 @@
 import bcrypt from "bcryptjs";
 import ENV from "../utils/env.util.js";
 import { OAuth2Client } from "google-auth-library";
-import { accessTokenExpiresIn, accessTokenTTL, refreshTokenExpiresIn, refreshTokenTTL } from "../config/TTL.config.js";
-import { generateAccessToken, generateRefreshToken, setCookieWithToken } from "./jwt.helper.js";
+import {
+  accessTokenExpiresIn,
+  accessTokenTTL,
+  refreshTokenExpiresIn,
+  refreshTokenTTL,
+} from "../utils/constant.util.js";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  setCookieWithToken,
+} from "./jwt.helper.js";
 
 const checkPassword = (password, hashedPassword) => {
   return new Promise((resolve, reject) => {
@@ -54,13 +63,10 @@ const handleNewRefreshToken = async (foundUser) => {
 };
 
 const generateAccessTokenAndSetCookies = async (res, payload, refreshToken) => {
-  const accessToken = await generateAccessToken(
-    payload,
-    accessTokenExpiresIn,
-  );
+  const accessToken = await generateAccessToken(payload, accessTokenExpiresIn);
   setCookieWithToken(res, accessToken, "accessToken", accessTokenTTL);
   setCookieWithToken(res, refreshToken, "refreshToken", refreshTokenTTL);
-  return accessToken
+  return accessToken;
 };
 
 export {
@@ -68,5 +74,5 @@ export {
   hashPassword,
   verifyGoogleToken,
   handleNewRefreshToken,
-  generateAccessTokenAndSetCookies
+  generateAccessTokenAndSetCookies,
 };

@@ -1,14 +1,25 @@
 import createHttpError from "http-errors";
-import UserModel from "../models/user.model.js";
+import { UserModel } from "../models/index.js";
+import { verifyRefreshToken } from "../helpers/jwt.helper.js";
 import {
   checkPassword,
   handleNewRefreshToken,
   verifyGoogleToken,
 } from "../helpers/auth.helper.js";
-import { verifyRefreshToken } from "../helpers/jwt.helper.js";
-import { filterFieldUser } from "../utils/filter.util.js";
+import { CACHE_USER_PREFIX, CACHE_USER_TTL } from "../utils/constant.util.js";
 
-const loginService = async (email, password) => {
+import { filterFieldUser } from "../utils/filter.util.js";
+import { redisClient } from "../config/redis.config.js";
+
+const cacheUserProfile = async (userId, userProfile) => {
+  await redisClient.set(
+    `${CACHE_USER_PREFIX}${userId}`,
+    JSON.stringify(userProfile),
+    { EX: CACHE_USER_TTL },
+  );
+};
+
+const login = async (email, password) => {
   const foundUser = await UserModel.findOne({ email });
 
   if (!foundUser) throw createHttpError.NotFound("Account does not exist!");
@@ -27,15 +38,19 @@ const loginService = async (email, password) => {
 
   const refreshToken = await handleNewRefreshToken(foundUser);
 
+  const userProfile = filterFieldUser(foundUser);
+
+  await cacheUserProfile(foundUser._id, userProfile);
+
   return {
     message: "Login successfully!",
-    user: filterFieldUser(foundUser),
+    user: userProfile,
     refreshToken,
     userId: foundUser._id,
   };
 };
 
-const googleLoginService = async (token) => {
+const googleLogin = async (token) => {
   const payload = await verifyGoogleToken(token);
 
   const userData = {
@@ -56,15 +71,18 @@ const googleLoginService = async (token) => {
 
   const refreshToken = await handleNewRefreshToken(foundUser);
 
+  const userProfile = filterFieldUser(foundUser);
+  await cacheUserProfile(foundUser._id, userProfile);
+
   return {
     message: "Login successfully!",
-    user: filterFieldUser(foundUser),
+    user: userProfile,
     refreshToken,
     userId: foundUser._id,
   };
 };
 
-const refreshTokenService = async (token) => {
+const refreshToken = async (token) => {
   if (!token) throw createHttpError.Unauthorized("Refresh token missing");
 
   const decoded = await verifyRefreshToken(token);
@@ -80,21 +98,30 @@ const refreshTokenService = async (token) => {
     throw createHttpError.Unauthorized("Refresh token expired");
 
   const newRefreshToken = await handleNewRefreshToken(user);
+  const userProfile = filterFieldUser(user);
 
+  await cacheUserProfile(user._id, userProfile);
   return {
     message: "Refresh token successfully",
-    user: filterFieldUser(user),
+    user: userProfile,
     refreshToken: newRefreshToken,
     userId: user._id,
   };
 };
 
 const getUserById = async (id) => {
-  const user = await UserModel.findOne({ _id: id, status: "active" });
+  const cachedUser = await redisClient.get(`${CACHE_USER_PREFIX}${id}`);
+  if (cachedUser) return JSON.parse(cachedUser);
+
+  const user = await UserModel.findOne({ _id: id, status: "active" }).lean();
   if (!user)
     throw createHttpError.NotFound("User does not exist or is inactive");
 
-  return user;
+  const userProfile = filterFieldUser(user);
+
+  await cacheUserProfile(id, userProfile);
+
+  return userProfile;
 };
 
-export { loginService, googleLoginService, refreshTokenService, getUserById };
+export const AuthService = { login, googleLogin, refreshToken, getUserById };

@@ -1,8 +1,7 @@
-import { FriendshipModel } from "../models/friendShip.model.js";
-import UserModel from "../models/user.model.js";
+import { FriendshipModel, UserModel } from "../models/index.js";
 
 const getFriends = async (userId) => {
-  const friends = await FriendModel.find({
+  const friends = await FriendshipModel.find({
     $or: [{ requester: userId }, { recipient: userId }],
     status: "accepted",
   })
@@ -22,7 +21,7 @@ const getFriends = async (userId) => {
 
 // Giả sử bạn có model Friendship lưu { requester, recipient, status: 'accepted' }
 
-const searchOnlyFriends = async (userId, searchTerm, limit=10) => {
+const searchOnlyFriends = async (userId, searchTerm, limit = 10) => {
   const friendships = await FriendshipModel.find({
     $or: [{ requester: userId }, { recipient: userId }],
     status: "accepted",
@@ -45,7 +44,6 @@ const searchOnlyFriends = async (userId, searchTerm, limit=10) => {
 
   return friends;
 };
-
 
 export const UserService = {
   getFriends,

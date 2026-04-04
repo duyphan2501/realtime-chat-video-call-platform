@@ -1,7 +1,6 @@
-import UserModel from "../models/user.model.js";
+import {UserModel} from "../models/index.js";
 import createHttpError from "http-errors";
-import { filterFieldUser } from "../utils/filter.util.js";
-import { UserService } from "../services/user.service.js";
+import { UserService } from "../services/index.js";
 
 /* ═══════════════════════════════════════════════════════════
    GET /users/me
@@ -293,4 +292,17 @@ export const searchOnlyFriends = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+export const UserController = {
+  getMe,
+  updateMe,
+  searchUsers,
+  getFriends,
+  getFriendRequests,
+  sendFriendRequest,
+  acceptFriendRequest,
+  rejectFriendRequest,
+  unfriend,
+  searchOnlyFriends,
 };

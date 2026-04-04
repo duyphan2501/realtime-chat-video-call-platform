@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCallStore, useConversationStore, useSocketStore } from "@/store";
 import { useRingCountdown, useWebRTC } from "@/hooks";
+import { useCallService } from "@/services";
 
 export type CallStatus =
   | "idle"
@@ -30,6 +31,7 @@ export default function IncomingCallPopup() {
   const { acceptCall, endCall } = useWebRTC();
   const socket = useSocketStore((s) => s.socket);
   const activeId = useConversationStore((s) => s.activeId);
+  const { rejectCall } = useCallService();
 
   // Local state: track permission-requesting phase
   const [isAccepting, setIsAccepting] = useState(false);
@@ -75,14 +77,15 @@ export default function IncomingCallPopup() {
     }
   };
 
-  const handleDecline = () => {
+  const handleDecline = async () => {
     if (status !== "ringing") return;
     const { peerUser, role } = useCallStore.getState();
-    socket?.emit("call:rejected", {
-      targetUserId: peerUser?._id,
-      ownerId: role !== "caller" ? peerUser?._id : null,
-      conversationId: activeId,
-      type: useCallStore.getState().callType,
+    await rejectCall({
+      targetUserId: peerUser?._id || "",
+      ownerId: role !== "caller" ? peerUser?._id || "" : null,
+      conversationId: useCallStore.getState().conversationId || "",
+      type: useCallStore.getState().callType || "video",
+      status: "rejected",
     });
     useCallStore.getState().reset();
   };
