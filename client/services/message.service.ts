@@ -88,7 +88,7 @@ export const useMessageService = () => {
         if (imgRes) attachments.push(...imgRes.data.uploadedImages);
         if (docRes) attachments.push(...docRes.data.uploadedDocuments);
       }
-
+ 
       // 2. Gửi tin nhắn cuối cùng
       return api.sendMessage({
         conversationId,

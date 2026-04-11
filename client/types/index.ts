@@ -79,6 +79,7 @@ export interface Conversation {
     createdAt: string;
     attachments?: Attachment[];
     deletedForEveryone?: boolean;
+    callData?: { duration: number; status: string; callType: string };
   };
   otherUser?: User;
   unreadCount: number;

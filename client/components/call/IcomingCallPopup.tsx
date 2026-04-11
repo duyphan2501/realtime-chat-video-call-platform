@@ -79,29 +79,13 @@ export default function IncomingCallPopup() {
 
   const handleDecline = async () => {
     if (status !== "ringing") return;
-    const { peerUser, role } = useCallStore.getState();
-    await rejectCall({
-      targetUserId: peerUser?._id || "",
-      ownerId: role !== "caller" ? peerUser?._id || "" : null,
-      conversationId: useCallStore.getState().conversationId || "",
-      type: useCallStore.getState().callType || "video",
-      status: "rejected",
-    });
+    await rejectCall("rejected");
     useCallStore.getState().reset();
   };
 
   // Auto-decline khi hết thời gian
   const handleAutoDecline = () => {
     if (useCallStore.getState().status !== "ringing") return;
-    // const { peerUser } = useCallStore.getState();
-    // socket?.emit("call:rejected", {
-    //   targetUserId: peerUser?._id,
-    //   ownerId: useCallStore.getState().role !== "caller" ? peerUser?._id : null,
-    //   conversationId: activeId,
-    //   type: useCallStore.getState().callType,
-    //   status: "missed",
-    // });
-    // setStatus("missed");
     useCallStore.getState().reset();
   };
 

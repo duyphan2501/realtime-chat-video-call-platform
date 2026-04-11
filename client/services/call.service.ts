@@ -1,30 +1,22 @@
 import { useAPI } from "@/API/useAPI";
-import { CallType } from "@/types";
 
 export const useCallService = () => {
   const api = useAPI().call;
-  const rejectCall = async (payload: {
-    targetUserId: string;
-    ownerId: string | null;
-    conversationId: string;
-    type: CallType;
-    status: string;
-  }) => {
+
+  const rejectCall = async (status: string = "rejected") => {
     try {
-      await api.rejectCall(payload);
-    } catch (error) {}
+      await api.rejectCall({ status });
+    } catch (error) {
+      console.error("Failed to reject call", error);
+    }
   };
 
-  const endCall = async (payload: {
-    targetUserId: string;
-    ownerId: string | null;
-    conversationId: string;
-    type: CallType;
-    duration: number;
-  }) => {
+  const endCall = async () => {
     try {
-      await api.endCall(payload);
-    } catch (error) {}
+      await api.endCall();
+    } catch (error) {
+      console.error("Failed to end call", error);
+    }
   };
 
   return {

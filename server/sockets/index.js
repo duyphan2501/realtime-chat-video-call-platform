@@ -5,9 +5,10 @@ import registerChatHandlers from "./chat.handler.js";
 import { UserModel } from "../models/index.js";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { redisClient, pubClient, subClient } from "../config/redis.config.js";
+import { handleCallCleanup } from "../services/call.service.js";
+import { AuthService } from "../services/auth.service.js";
 
 export let io;
-
 export const initSocket = async (server, clientUrl) => {
   io = new Server(server, {
     pingTimeout: 60000,
@@ -23,6 +24,7 @@ export const initSocket = async (server, clientUrl) => {
     if (!userId) return;
 
     const userKey = `online_user:${userId}`;
+
     await redisClient.sAdd("online_users", userId);
     await redisClient.sAdd(userKey, socket.id);
 
@@ -36,6 +38,22 @@ export const initSocket = async (server, clientUrl) => {
       `Socket connected. User ID: ${userId}, Socket ID: ${socket.id}`,
     );
 
+    const pendingCall = await redisClient.hGet("active_calls", userId);
+    const pendingCallData = JSON.parse(pendingCall);
+
+    if (pendingCallData) {
+      const { startTime, callType, offer, conversationId, callerId } =
+        pendingCallData;
+
+      const fromUser = await AuthService.getUserById(callerId);
+      io.to(`user_${userId}`).emit("call:incoming", {
+        incoming: { from: fromUser, offer },
+        startedAt: startTime,
+        callType,
+        conversationId,
+      });
+    }
+
     // Đăng ký các module logic
     registerChatHandlers(io, socket);
     registerWebRTCHandlers(io, socket);
@@ -43,16 +61,26 @@ export const initSocket = async (server, clientUrl) => {
     socket.on("disconnect", async () => {
       await redisClient.sRem(userKey, socket.id);
       const remainingSockets = await redisClient.sCard(userKey);
-      if (remainingSockets !== 0) return;
-
-      await redisClient.sRem("online_users", userId);
-
-      const now = new Date();
-      io.emit("presence:offline", { userId, lastActive: now });
-      await UserModel.findByIdAndUpdate(userId, { lastActive: now });
       console.log(
-        `User disconnected. Socket ID: ${socket.id}, User ID: ${userId}`,
+        `User disconnected. Socket ID: ${socket.id}, User ID: ${userId}, Remain: ${remainingSockets}`,
       );
+      const callDataRaw = await redisClient.hGet("active_calls", userId);
+
+      if (callDataRaw) {
+        const callData = JSON.parse(callDataRaw);
+
+        if (callData.socketId === socket.id) {
+          await handleCallCleanup(userId);
+        }
+      }
+      if (remainingSockets === 0) {
+        await redisClient.sRem("online_users", userId);
+        const now = new Date();
+        io.emit("presence:offline", { userId, lastActive: now });
+
+        await UserModel.findByIdAndUpdate(userId, { lastActive: now });
+        console.log(`User completely disconnected. User ID: ${userId}`);
+      }
     });
   });
 };

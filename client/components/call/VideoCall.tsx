@@ -97,30 +97,26 @@ export default function VideoCall() {
     });
   }, [isCamOff, localStream, status]);
 
-  // ── Handler khi cuộc gọi kết thúc (dùng getState() vì chỉ cần snapshot tại thời điểm gọi)
   const handleTerminateCall = async ({
     reason = "ended",
   }: {
     reason: CallStatus;
   }) => {
+    const { setStatus, reset, callType } = useCallStore.getState();
+
     if (!callType) return;
-    const { setStatus, reset, role } = useCallStore.getState();
-    // const event = `call:${reason === "ended" ? "ended" : "rejected"}`;
-    endCall();
+
     setStatus(reason);
 
-    const payload = {
-      targetUserId: peerUser?._id || "",
-      ownerId: role !== "caller" ? peerUser?._id || "" : null,
-      conversationId: useCallStore.getState().conversationId || "",
-      type: callType,
-      // ...(reason === "ended" ? { duration } : { status: reason }),
-    };
-
-    const isEnd = reason === "ended";
-    // socket?.emit(event, payload);
-    if (isEnd) await endCallAPI({ ...payload, duration });
-    else await rejectCall({ ...payload, status: reason });
+    try {
+      if (reason === "ended") {
+        await endCallAPI();
+      } else {
+        await rejectCall(reason);
+      }
+    } catch (error) {
+      console.error("Failed to terminate call:", error);
+    }
 
     if (endedTimerRef.current) clearTimeout(endedTimerRef.current);
     endedTimerRef.current = setTimeout(() => {

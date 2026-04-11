@@ -1,4 +1,5 @@
 import { Message } from "@/types";
+import { getCallConfig } from "@/utils/chat.utils";
 import { Phone, Video, PhoneOff, PhoneMissed, RotateCcw } from "lucide-react";
 
 export default function CallMessage({
@@ -8,52 +9,12 @@ export default function CallMessage({
   msg: Message;
   isMe: boolean;
 }) {
-  const { status, duration } = msg.callData || {};
-  const getCallConfig = () => {
-    const isVideo = msg.type === "video";
-    const typeLabel = msg.type ? "Video call" : "Audio call";
-
-    switch (status) {
-      case "ended":
-        return {
-          icon: isVideo ? <Video size={18} /> : <Phone size={18} />,
-          title: `${typeLabel} ended`,
-          detail: `${Math.floor(duration! / 60)}:${(duration! % 60).toString().padStart(2, "0")}`,
-          showCallback: true,
-        };
-      case "missed":
-        return {
-          icon: <PhoneMissed size={18} className="text-red-500" />,
-          title: !isMe
-            ? `Missed your ${typeLabel.toLowerCase()}`
-            : `Missed ${typeLabel.toLowerCase()}`,
-          detail: null,
-          showCallback: true,
-        };
-      case "rejected":
-        return {
-          icon: <PhoneOff size={18} />,
-          title: isMe ? "Call declined" : "Declined your call",
-          detail: null,
-          showCallback: true,
-        };
-      default:
-        return {
-          icon: null,
-          title: msg.content,
-          detail: null,
-          showCallback: false,
-        };
-    }
-  };
-
-  const config = getCallConfig();
+  const config = getCallConfig(msg, isMe);
 
   return (
     <div
       className={`text-nowrap flex items-end gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
     >
-
       {/* Message Bubble */}
       <div
         className={`rounded-2xl p-3  text-white ${

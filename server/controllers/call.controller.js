@@ -3,21 +3,14 @@ import { CallService } from "../services/index.js";
 
 const rejectCall = async (req, res, next) => {
   try {
-    const { conversationId } = req.params;
-    const { userId } = req.user;
-    const { targetUserId, ownerId, type, status } = req.body;
-    if (!conversationId || !targetUserId || !type)
-      throw createHttpError.BadRequest(
-        "ConversationId, targetUserId, and type are required",
-      );
+    const { userId } = req.user; 
+    const { status } = req.body; 
+
     if (!userId) throw createHttpError.Unauthorized("Unauthorized");
 
     await CallService.rejectCall({
-      targetUserId,
-      senderId: ownerId || userId,
-      conversationId,
-      type,
-      status,
+      senderId: userId,
+      status: status || "rejected",
     });
 
     res.status(200).json({ message: "Call rejected successfully" });
@@ -28,22 +21,12 @@ const rejectCall = async (req, res, next) => {
 
 const endCall = async (req, res, next) => {
   try {
-    const { conversationId } = req.params;
     const { userId } = req.user;
-    const { targetUserId, ownerId, type, duration } = req.body;
 
-    if (!conversationId || !targetUserId || !type || duration === undefined)
-      throw createHttpError.BadRequest(
-        "ConversationId, targetUserId, type, and duration are required",
-      );
     if (!userId) throw createHttpError.Unauthorized("Unauthorized");
 
     await CallService.endCall({
-      targetUserId,
-      senderId: ownerId || userId,
-      conversationId,
-      type,
-      duration,
+      senderId: userId,
     });
 
     res.status(200).json({ message: "Call ended successfully" });

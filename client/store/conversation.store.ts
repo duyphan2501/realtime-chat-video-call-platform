@@ -79,6 +79,7 @@ export const useConversationStore = create<ConversationState>((set) => ({
           type: msg.type,
           attachments: msg.attachments,
           createdAt: msg.createdAt,
+          callData: msg.callData
         },
         unreadCount:
           newUnreadCount !== undefined

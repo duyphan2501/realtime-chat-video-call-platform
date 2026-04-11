@@ -30,7 +30,7 @@ export const ConversationService = {
       .populate("participants.user", "_id name avatar lastRead lastActive")
       .populate({
         path: "lastMessage",
-        select: "content type attachments sender createdAt deletedForEveryone",
+        select: "content type attachments sender createdAt deletedForEveryone callData",
         populate: { path: "sender", select: "_id name avatar" },
       })
       .lean();
