@@ -1,11 +1,17 @@
 const filterFieldUser = (user) => {
-  if (!user) return {};
-  return {
-    _id: user._id,
-    name: user.name,
-    avatar: user.avatar,
-    email: user.email,
-  };
+  if (!user) return null;
+  const userObject = user.toObject ? user.toObject() : { ...user };
+
+  delete userObject.password;
+  delete userObject.refreshToken;
+  delete userObject.refreshTokenExpireAt;
+  delete userObject.verificationToken;
+  delete userObject.verificationTokenExpireAt;
+  delete userObject.forgotPasswordToken;
+  delete userObject.forgotPasswordTokenExpireAt;
+  delete userObject.__v;
+
+  return userObject;
 };
 
 export { filterFieldUser };

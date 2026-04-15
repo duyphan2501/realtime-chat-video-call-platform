@@ -20,5 +20,5 @@ export const authAPI = (axiosPrivate: AxiosInstance) => ({
 
   resetPassword: (data: any) => axiosPublic.post("/auth/reset-password", data),
 
-  checkResetCode: (data: { email: string; code: string }) => axiosPublic.post("/auth/check-reset-code", data),
+  updateProfile: (data: any) => axiosPrivate.put("/auth/profile", data),
 });

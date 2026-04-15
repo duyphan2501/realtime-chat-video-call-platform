@@ -30,9 +30,12 @@ type ResetPasswordPayload = {
   newPassword: string;
 };
 
-type CheckCodePayload = {
-  email: string;
-  code: string;
+type UpdateProfilePayload = {
+  name?: string;
+  bio?: string;
+  phone?: string;
+  gender?: string;
+  dob?: string;
 };
 
 export const useAuthService = () => {
@@ -71,7 +74,11 @@ export const useAuthService = () => {
   const getMeMutation = useMutation({
     mutationFn: () => api.auth.getMe(),
     onSuccess: (res) => setAuth(res.data.user, res.data.accessToken),
-    onError: () => setSessionExpired(true),
+    onError: () => {
+      clearAuth();
+      queryClient.clear();
+      router.push("/auth");
+    },
   });
 
   const logoutMutation = useMutation({
@@ -79,7 +86,7 @@ export const useAuthService = () => {
     onSettled: () => {
       clearAuth();
       queryClient.clear();
-      router.push("/login");
+      router.push("/auth");
       toast.success("Logged out successfully");
     },
   });
@@ -87,15 +94,6 @@ export const useAuthService = () => {
   const registerMutation = useMutation({
     mutationFn: (credentials: RegisterCredentials) => api.auth.register(credentials),
     onError: (error: any) => {
-      
-      // Check lỗi ở console để debug
-      console.group("🔴 CHI TIẾT LỖI ĐĂNG KÝ (REGISTER ERROR)");
-      console.log("Toàn bộ lỗi Axios:", error);
-      console.log("Trạng thái HTTP (Status code):", error.response?.status);
-      console.log("Data từ Backend trả về:", error.response?.data);
-      console.log("Đường dẫn API đã gọi:", error.config?.baseURL, error.config?.url);
-      console.groupEnd();
-
       const msg = error.response?.data?.message || "Failed to register";
       toast.error(msg);
     },
@@ -125,11 +123,19 @@ export const useAuthService = () => {
     },
   });
 
-  const checkResetCodeMutation = useMutation({
-    mutationFn: (payload: CheckCodePayload) => api.auth.checkResetCode(payload),
+  const updateProfileMutation = useMutation({
+    mutationFn: (payload: UpdateProfilePayload) => api.auth.updateProfile(payload),
+    onSuccess: (res, variables) => {
+      toast.success(res.data?.message || "Cập nhật thông tin thành công");
+      const currentUser = useAuthStore.getState().user;
+      const accessToken = useAuthStore.getState().accessToken;
+      if (currentUser && accessToken) {
+        const updatedUser = { ...currentUser, ...variables };
+        setAuth(updatedUser, accessToken);
+      }
+    },
     onError: (error: any) => {
-      const msg = error.response?.data?.message || "Mã không hợp lệ";
-      toast.error(msg);
+      toast.error(error.response?.data?.message || "Cập nhật thất bại");
     },
   });
 
@@ -169,15 +175,6 @@ export const useAuthService = () => {
     }
   };
 
-  const checkResetCode = async (data: CheckCodePayload) => {
-    try {
-      await checkResetCodeMutation.mutateAsync(data);
-      return true;
-    } catch (error) {
-      return false;
-    }
-  };
-
   return {
     login: loginMutation.mutateAsync,
     getMe: getMeMutation.mutateAsync,
@@ -192,7 +189,7 @@ export const useAuthService = () => {
     isSendingForgot: forgotPasswordMutation.isPending,
     resetPassword,
     isResetting: resetPasswordMutation.isPending,
-    checkResetCode,
-    isCheckingCode: checkResetCodeMutation.isPending,
+    updateProfile: updateProfileMutation.mutateAsync,
+    isUpdatingProfile: updateProfileMutation.isPending,
   };
 };

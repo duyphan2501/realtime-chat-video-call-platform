@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   MessageSquare,
   Users,
@@ -9,10 +9,12 @@ import {
   Folder,
   CheckSquare,
   Settings,
-  LogOut,
 } from "lucide-react";
 import { useAuthStore } from "@/store";
 import { getAvatar } from "@/utils/user.utils";
+import { useState } from "react";
+import SettingsPopover from "./SettingsPopover";
+import ProfileModal from "./ProfileModal";
 
 const NAV_ITEMS = [
   {
@@ -45,12 +47,8 @@ const NAV_ITEMS = [
 export default function Sidebar() {
   const pathname = usePathname();
   const currentUser = useAuthStore((s) => s.user);
-
-  const logout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    window.location.href = "/auth";
-  };
+  const [showSettingsPopover, setShowSettingsPopover] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   return (
     <aside className="flex flex-col items-center py-3 gap-2 shrink-0 h-100vh w-18 border-r border-gray-800 justify-center!">
@@ -88,20 +86,27 @@ export default function Sidebar() {
       <div className="flex-1" />
 
       {/* Settings */}
-      <NavLink
-        href="/settings"
-        title="Cài đặt"
-        active={pathname === "/settings"}
-      >
-        <Settings className="w-5 h-5" />
-      </NavLink>
-
-      {/* Logout */}
-      <button onClick={logout}>
-        <NavBtn title="Đăng xuất">
-          <LogOut className="w-5 h-5" />
+      <div className="relative">
+        <NavBtn
+          title="Cài đặt"
+          onClick={() => setShowSettingsPopover((v) => !v)}
+        >
+          <Settings className="w-5 h-5" />
         </NavBtn>
-      </button>
+        {showSettingsPopover && (
+          <SettingsPopover
+            onClose={() => setShowSettingsPopover(false)}
+            onViewProfile={() => {
+              setShowSettingsPopover(false);
+              setShowProfileModal(true);
+            }}
+          />
+        )}
+      </div>
+
+      {showProfileModal && (
+        <ProfileModal onClose={() => setShowProfileModal(false)} />
+      )}
     </aside>
   );
 }
@@ -130,13 +135,15 @@ function NavBtn({
   children,
   title,
   active = false,
+  onClick,
 }: {
   children: React.ReactNode;
   title: string;
   active?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <div className="relative">
+    <div className="relative" onClick={onClick}>
       <div
         title={title}
         className={`w-12 h-12 text-gray-400 flex items-center justify-center rounded-2xl transition-all duration-150 cursor-pointer hover:bg-primary/10 ${active && "text-primary bg-primary/10"}`}

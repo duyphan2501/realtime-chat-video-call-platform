@@ -13,4 +13,4 @@ authRouter.post("/register", AuthController.register);
 authRouter.post("/verify", AuthController.verifyEmail);
 authRouter.post("/forgot-password", AuthController.forgotPassword);
 authRouter.post("/reset-password", AuthController.resetPassword);
-authRouter.post("/check-reset-code", AuthController.checkResetCode);
+authRouter.put("/profile", checkAuth, AuthController.updateProfile);

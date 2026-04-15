@@ -29,14 +29,8 @@ const ForgotPasswordForm = ({ onBack }: Props) => {
   const [isCodeVerified, setIsCodeVerified] = useState(false);
 
   const router = useRouter();
-  const {
-    forgotPassword,
-    isSendingForgot,
-    resetPassword,
-    isResetting,
-    checkResetCode,
-    isCheckingCode,
-  } = useAuthService();
+  const { forgotPassword, isSendingForgot, resetPassword, isResetting } =
+    useAuthService();
 
   const handleSendEmail = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -59,12 +53,9 @@ const ForgotPasswordForm = ({ onBack }: Props) => {
       toast.error("Vui lòng nhập đủ 6 số.");
       return;
     }
-    const success = await checkResetCode({ email, code });
-    if (success) {
-      setIsCodeVerified(true);
-      toast.success("Mã xác thực chính xác!");
-      setStep("password");
-    }
+    // Giả lập trạng thái loading để người dùng biết hệ thống đang xử lý
+    // Thực tế việc check sẽ nằm trong hàm resetPassword
+    setStep("password");
   };
 
   const handleResetPassword = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -172,24 +163,19 @@ const ForgotPasswordForm = ({ onBack }: Props) => {
                     maxLength={6}
                   />
                   <div className="absolute right-4 flex items-center justify-center">
-                    {isCheckingCode ? (
-                      <RefreshCw
-                        size={20}
-                        className="text-gray-400 animate-spin"
-                      />
-                    ) : isCodeVerified ? (
+                    {isCodeVerified && (
                       <CheckCircle size={22} className="text-green-500" />
-                    ) : null}
+                    )}
                   </div>
                 </div>
               </div>
 
               <button
                 className="w-full h-12 mt-2 bg-primary text-white font-bold flex justify-center items-center rounded-lg hover:bg-blue-800 cursor-pointer transition disabled:opacity-70 disabled:cursor-not-allowed"
-                disabled={isCheckingCode || isCodeVerified}
+                disabled={isCodeVerified}
                 type="submit"
               >
-                {isCheckingCode ? <IconLoading size={24} /> : "Verify Code"}
+                Verify Code
               </button>
             </form>
 

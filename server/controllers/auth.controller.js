@@ -62,7 +62,9 @@ const getMe = async (req, res, next) => {
     const userId = req.user.userId;
     if (!userId) throw createHttpError.BadRequest("Userid is missing");
 
-    const user = await AuthService.getUserById(userId);
+    // Sử dụng trực tiếp UserModel để đảm bảo không bị dính .select() ẩn trong AuthService
+    const user = await UserModel.findById(userId);
+
     const accessToken = req.cookies.accessToken;
 
     return res.status(200).json({ user: filterFieldUser(user), accessToken });
@@ -73,6 +75,17 @@ const getMe = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
   try {
+    const { refreshToken } = req.cookies;
+    if (refreshToken) {
+      // Vô hiệu hóa refresh token trong DB để ngăn chặn việc tái sử dụng
+      await UserModel.findOneAndUpdate(
+        { refreshToken },
+        {
+          $set: { refreshToken: undefined, refreshTokenExpireAt: undefined },
+        },
+      );
+    }
+
     res.clearCookie("accessToken");
     res.clearCookie("refreshToken");
     return res
@@ -235,25 +248,20 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-const checkResetCode = async (req, res, next) => {
+const updateProfile = async (req, res, next) => {
   try {
-    const { email } = req.body;
-    const code = req.body.code?.trim();
+    const userId = req.user.userId;
+    const { name, bio, phone, gender, dob } = req.body;
 
-    if (!email || !code) {
-      throw createHttpError.BadRequest("Vui lòng cung cấp email và mã xác thực.");
-    }
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      userId,
+      { $set: { name, bio, phone, gender, dob } },
+      { new: true } // Trả về document mới sau khi cập nhật
+    );
 
-    const user = await UserModel.findOne({ email });
+    if (!updatedUser) throw createHttpError.NotFound("Người dùng không tồn tại.");
 
-    if (!user) {
-      throw createHttpError.NotFound("Người dùng không tồn tại.");
-    }
-    if (user.forgotPasswordToken !== code || new Date() > user.forgotPasswordTokenExpireAt) {
-      throw createHttpError.BadRequest("Mã xác thực không hợp lệ hoặc đã hết hạn.");
-    }
-
-    return res.status(200).json({ message: "Mã xác thực hợp lệ." });
+    return res.status(200).json({ user: filterFieldUser(updatedUser), message: "Cập nhật thành công." });
   } catch (error) {
     next(error);
   }
@@ -269,5 +277,5 @@ export const AuthController = {
   verifyEmail,
   forgotPassword,
   resetPassword,
-  checkResetCode,
+  updateProfile,
 };

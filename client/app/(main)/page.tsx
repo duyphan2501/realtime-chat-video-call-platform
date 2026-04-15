@@ -93,7 +93,7 @@ export default function ChatPage() {
                   Chào mừng đến DaloChat
                 </p>
                 <p className="text-sm" style={{ color: "var(--color-ink-4)" }}>
-                  Chọn một cuộc trò chuyện để bắt đầu nhắn tin
+                  Chọn một cuộc trò chuyện để bắt đầu Chatset
                 </p>
               </div>
             </div>
