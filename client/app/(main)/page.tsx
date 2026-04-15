@@ -88,9 +88,9 @@ export default function ChatPage() {
               <div>
                 <p
                   className="font-bold text-lg mb-1"
-                  style={{ color: "var(--color-ink)" }}
+                  style={{ color: "var(--color-ink-4)", paddingBottom: 10 }}
                 >
-                  Chào mừng đến ZaloChat
+                  Chào mừng đến DaloChat
                 </p>
                 <p className="text-sm" style={{ color: "var(--color-ink-4)" }}>
                   Chọn một cuộc trò chuyện để bắt đầu nhắn tin

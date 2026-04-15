@@ -9,3 +9,8 @@ authRouter.post("/google", AuthController.googleLogin);
 authRouter.get("/me", checkAuth, AuthController.getMe);
 authRouter.delete("/logout", AuthController.logout);
 authRouter.put("/refresh-token", AuthController.handleRefreshToken);
+authRouter.post("/register", AuthController.register);
+authRouter.post("/verify", AuthController.verifyEmail);
+authRouter.post("/forgot-password", AuthController.forgotPassword);
+authRouter.post("/reset-password", AuthController.resetPassword);
+authRouter.post("/check-reset-code", AuthController.checkResetCode);

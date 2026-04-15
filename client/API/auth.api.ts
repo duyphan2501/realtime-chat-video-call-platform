@@ -4,6 +4,10 @@ import { axiosPublic } from "@/API/axiosIntance";
 export const authAPI = (axiosPrivate: AxiosInstance) => ({
   login: (data: any) => axiosPublic.post("/auth/login", data),
 
+  register: (data: any) => axiosPublic.post('/auth/register', data),
+
+  verifyEmail: (data: any) => axiosPublic.post('/auth/verify', data),
+
   googleLogin: (token: string) => axiosPublic.post("/auth/google", { token }),
 
   refreshToken: () => axiosPublic.put("/auth/refresh-token"),
@@ -11,4 +15,10 @@ export const authAPI = (axiosPrivate: AxiosInstance) => ({
   logout: () => axiosPublic.delete("/auth/logout"),
 
   getMe: () => axiosPrivate.get("/auth/me"),
+
+  forgotPassword: (data: { email: string }) => axiosPublic.post("/auth/forgot-password", data),
+
+  resetPassword: (data: any) => axiosPublic.post("/auth/reset-password", data),
+
+  checkResetCode: (data: { email: string; code: string }) => axiosPublic.post("/auth/check-reset-code", data),
 });
