@@ -1,10 +1,3 @@
-/* ═══════════════════════════════════════════════════════════
-   components/chat/CreateGroupModal.tsx
-
-   TODO — backend:
-   ① Search friends: userApi.getFriends() — đã load sẵn
-   ② Create group: conversationApi.createGroup()
-   ═══════════════════════════════════════════════════════════ */
 "use client";
 import { useState, useRef, useCallback } from "react";
 import type { User } from "@/types";
@@ -229,15 +222,6 @@ export default function CreateGroupModal({ onClose }: Props) {
                 )}
               </div>
             </div>
-
-            {/* {error && (
-              <p
-                className="text-sm text-center"
-                style={{ color: "var(--color-danger)" }}
-              >
-                {error}
-              </p>
-            )} */}
           </div>
 
           {/* Footer */}

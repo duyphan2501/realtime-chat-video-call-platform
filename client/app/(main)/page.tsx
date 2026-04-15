@@ -33,7 +33,7 @@ export default function ChatPage() {
   const conversations = useConversationStore((s) => s.conversations);
   const activeId = useConversationStore((s) => s.activeId);
   const setActiveId = useConversationStore((s) => s.setActiveId);
-  const socket = useSocketStore(s => s.socket)
+  const socket = useSocketStore((s) => s.socket);
 
   // 2. Lấy các hàm điều khiển từ Hook
   const { startCall, acceptCall, endCall } = useWebRTC();
@@ -103,9 +103,7 @@ export default function ChatPage() {
 
       {/* Overlays */}
       {showCreate && currentUser && (
-        <CreateGroupModal
-          onClose={() => setShowCreate(false)}
-        />
+        <CreateGroupModal onClose={() => setShowCreate(false)} />
       )}
     </div>
   );

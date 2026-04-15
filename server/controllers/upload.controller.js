@@ -28,6 +28,7 @@ const uploadDocument = async (req, res, next) => {
       success: true,
     });
   } catch (error) {
+    console.error(error);
     next(error);
   }
 };
@@ -54,6 +55,7 @@ const uploadImages = async (req, res, next) => {
       success: true,
     });
   } catch (error) {
+    console.error(error);
     next(error);
   }
 };

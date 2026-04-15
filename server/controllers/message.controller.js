@@ -66,6 +66,7 @@ const sendMessage = async (req, res, next) => {
       data: newMessage,
     });
   } catch (error) {
+    console.error(error);
     next(error);
   }
 };

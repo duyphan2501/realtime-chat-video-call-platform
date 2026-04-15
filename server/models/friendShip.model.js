@@ -14,11 +14,11 @@ const friendshipSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enums: ["pending", "accepted", "rejected"],
+      enum: ["pending", "accepted", "rejected"],
       default: "pending",
     },
   },
-  { timestamps: true, _id: false, collection: "friendships" },
+  { timestamps: true, collection: "friendships" },
 );
 
 friendshipSchema.index({ requester: 1, recipient: 1 }, { unique: true });

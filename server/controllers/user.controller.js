@@ -1,5 +1,6 @@
-import {UserModel} from "../models/index.js";
+import { UserModel, FriendshipModel } from "../models/index.js";
 import createHttpError from "http-errors";
+import { filterFieldUser } from "../utils/filter.util.js";
 import { UserService } from "../services/index.js";
 
 /* ═══════════════════════════════════════════════════════════
@@ -10,10 +11,10 @@ export const getMe = async (req, res, next) => {
     const userId = req.user.userId;
     if (!userId) throw createHttpError.BadRequest("UserId is missing");
 
-    const user = await UserModel.findById(userId).select("-password");
+    const user = await UserModel.findById(userId);
     if (!user) throw createHttpError.NotFound("User not found");
 
-    res.status(200).json({ success: true, user });
+    res.status(200).json({ success: true, user: filterFieldUser(user) });
   } catch (error) {
     next(error);
   }
@@ -25,17 +26,17 @@ export const getMe = async (req, res, next) => {
 export const updateMe = async (req, res, next) => {
   try {
     const userId = req.user.userId;
-    const { name, bio, phone } = req.body;
+    const { name, bio, phone, gender, dob } = req.body;
 
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
-      { name, bio, phone },
+      { name, bio, phone, gender, dob },
       { new: true, runValidators: true },
-    ).select("-password");
+    );
 
     if (!updatedUser) throw createHttpError.NotFound("User not found");
 
-    res.status(200).json({ success: true, user: updatedUser });
+    res.status(200).json({ success: true, user: filterFieldUser(updatedUser) });
   } catch (error) {
     next(error);
   }
@@ -66,20 +67,32 @@ export const searchUsers = async (req, res, next) => {
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit));
 
-    // Get current user's friend list to determine friendStatus
-    const currentUser = await UserModel.findById(userId).select(
-      "friends friendRequestsSent",
-    );
-    const friendIds = currentUser?.friends?.map((id) => id.toString()) || [];
-    const sentToIds =
-      currentUser?.friendRequestsSent?.map((r) => r.to?.toString()) || [];
+    // Get current user's friendships from FriendshipModel
+    const friendships = await FriendshipModel.find({
+      $or: [{ requester: userId }, { recipient: userId }],
+    });
+
+    const friendIds = friendships
+      .filter((f) => f.status === "accepted")
+      .map((f) => f.requester.toString() === userId.toString() ? f.recipient.toString() : f.requester.toString());
+
+    const sentToIds = friendships
+      .filter((f) => f.status === "pending" && f.requester.toString() === userId.toString())
+      .map((f) => f.recipient.toString());
+
+    const receivedFromIds = friendships
+      .filter((f) => f.status === "pending" && f.recipient.toString() === userId.toString())
+      .map((f) => f.requester.toString());
 
     const usersWithStatus = users.map((user) => {
       const userObj = user.toObject();
-      if (friendIds.includes(user._id.toString())) {
+      const idStr = user._id.toString();
+      if (friendIds.includes(idStr)) {
         userObj.friendStatus = "friend";
-      } else if (sentToIds.includes(user._id.toString())) {
+      } else if (sentToIds.includes(idStr)) {
         userObj.friendStatus = "sent";
+      } else if (receivedFromIds.includes(idStr)) {
+        userObj.friendStatus = "received";
       } else {
         userObj.friendStatus = "none";
       }
@@ -99,13 +112,22 @@ export const getFriends = async (req, res, next) => {
   try {
     const userId = req.user.userId;
 
-    const user = await UserModel.findById(userId)
-      .populate("friends", "-password")
-      .select("friends");
+    const friendships = await FriendshipModel.find({
+      $or: [{ requester: userId }, { recipient: userId }],
+      status: "accepted",
+    })
+      .populate("requester", "-password")
+      .populate("recipient", "-password");
+
+    const friends = friendships.map((f) => {
+      const friendDoc =
+        f.requester._id.toString() === userId.toString() ? f.recipient : f.requester;
+      return filterFieldUser(friendDoc);
+    });
 
     res.status(200).json({
       success: true,
-      friends: user?.friends || [],
+      friends,
     });
   } catch (error) {
     next(error);
@@ -119,20 +141,22 @@ export const getFriendRequests = async (req, res, next) => {
   try {
     const userId = req.user.userId;
 
-    const user = await UserModel.findById(userId)
-      .populate("friendRequestsReceived.from", "-password")
-      .select("friendRequestsReceived");
+    const requests = await FriendshipModel.find({
+      recipient: userId,
+      status: "pending",
+    }).populate("requester", "-password");
 
-    const requests = (user?.friendRequestsReceived || [])
-      .map((req) => ({
-        ...req.from?.toObject(),
-        friendStatus: "received",
-      }))
-      .filter((r) => r._id);
+    const friendRequests = requests
+      .map((req) => {
+        if (!req.requester) return null;
+        const userObj = filterFieldUser(req.requester);
+        return { ...userObj, friendStatus: "received" };
+      })
+      .filter(Boolean);
 
     res.status(200).json({
       success: true,
-      friendRequests: requests,
+      friendRequests,
     });
   } catch (error) {
     next(error);
@@ -158,31 +182,22 @@ export const sendFriendRequest = async (req, res, next) => {
     const targetUser = await UserModel.findById(targetUserId);
     if (!targetUser) throw createHttpError.NotFound("User not found");
 
-    // Check if already friends
-    if (targetUser.friends?.includes(userId)) {
-      throw createHttpError.Conflict("Already friends");
-    }
-
-    // Check if request already sent
-    const alreadySent = targetUser.friendRequestsReceived?.some(
-      (req) => req.from?.toString() === userId,
-    );
-    if (alreadySent) {
-      throw createHttpError.Conflict("Friend request already sent");
-    }
-
-    // Add to sent requests (current user)
-    await UserModel.findByIdAndUpdate(userId, {
-      $addToSet: {
-        friendRequestsSent: { to: targetUserId, createdAt: new Date() },
-      },
+    const existing = await FriendshipModel.findOne({
+      $or: [
+        { requester: userId, recipient: targetUserId },
+        { requester: targetUserId, recipient: userId },
+      ],
     });
 
-    // Add to received requests (target user)
-    await UserModel.findByIdAndUpdate(targetUserId, {
-      $addToSet: {
-        friendRequestsReceived: { from: userId, createdAt: new Date() },
-      },
+    if (existing) {
+      if (existing.status === "accepted") throw createHttpError.Conflict("Already friends");
+      throw createHttpError.Conflict("Friend request already exists");
+    }
+
+    await FriendshipModel.create({
+      requester: userId,
+      recipient: targetUserId,
+      status: "pending",
     });
 
     res.status(200).json({ success: true, message: "Friend request sent" });
@@ -202,20 +217,13 @@ export const acceptFriendRequest = async (req, res, next) => {
     if (!senderId)
       throw createHttpError.BadRequest("Sender user ID is required");
 
-    // Remove from received requests
-    await UserModel.findByIdAndUpdate(userId, {
-      $pull: { friendRequestsReceived: { from: senderId } },
-    });
+    const friendship = await FriendshipModel.findOneAndUpdate(
+      { requester: senderId, recipient: userId, status: "pending" },
+      { status: "accepted" },
+      { new: true }
+    );
 
-    // Add to friends both ways
-    await UserModel.findByIdAndUpdate(userId, {
-      $addToSet: { friends: senderId },
-    });
-
-    await UserModel.findByIdAndUpdate(senderId, {
-      $addToSet: { friends: userId },
-      $pull: { friendRequestsSent: { to: userId } },
-    });
+    if (!friendship) throw createHttpError.NotFound("Friend request not found");
 
     res.status(200).json({ success: true, message: "Friend request accepted" });
   } catch (error) {
@@ -234,15 +242,13 @@ export const rejectFriendRequest = async (req, res, next) => {
     if (!senderId)
       throw createHttpError.BadRequest("Sender user ID is required");
 
-    // Remove from received requests
-    await UserModel.findByIdAndUpdate(userId, {
-      $pull: { friendRequestsReceived: { from: senderId } },
+    const deleted = await FriendshipModel.findOneAndDelete({
+      requester: senderId,
+      recipient: userId,
+      status: "pending",
     });
 
-    // Remove from their sent requests
-    await UserModel.findByIdAndUpdate(senderId, {
-      $pull: { friendRequestsSent: { to: userId } },
-    });
+    if (!deleted) throw createHttpError.NotFound("Friend request not found");
 
     res.status(200).json({ success: true, message: "Friend request rejected" });
   } catch (error) {
@@ -261,14 +267,15 @@ export const unfriend = async (req, res, next) => {
     if (!friendId)
       throw createHttpError.BadRequest("Friend user ID is required");
 
-    // Remove from both users' friend lists
-    await UserModel.findByIdAndUpdate(userId, {
-      $pull: { friends: friendId },
+    const deleted = await FriendshipModel.findOneAndDelete({
+      $or: [
+        { requester: userId, recipient: friendId },
+        { requester: friendId, recipient: userId },
+      ],
+      status: "accepted",
     });
 
-    await UserModel.findByIdAndUpdate(friendId, {
-      $pull: { friends: userId },
-    });
+    if (!deleted) throw createHttpError.NotFound("Friendship not found");
 
     res.status(200).json({ success: true, message: "Unfriend successful" });
   } catch (error) {

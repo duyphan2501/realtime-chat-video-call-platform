@@ -9,6 +9,8 @@ import { handleCallCleanup } from "../services/call.service.js";
 import { AuthService } from "../services/auth.service.js";
 
 export let io;
+export const getIo = () => io;
+
 export const initSocket = async (server, clientUrl) => {
   io = new Server(server, {
     pingTimeout: 60000,

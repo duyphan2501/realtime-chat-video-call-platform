@@ -18,7 +18,7 @@ import ProfileModal from "./ProfileModal";
 
 const NAV_ITEMS = [
   {
-    href: "/chat",
+    href: "/",
     label: "Tin nhắn",
     Icon: MessageSquare,
   },
@@ -74,7 +74,8 @@ export default function Sidebar() {
 
       {/* Nav */}
       {NAV_ITEMS.map(({ href, label, Icon }) => {
-        const active = pathname.startsWith(href);
+        const active =
+          href === "/" ? pathname === "/" : pathname.startsWith(href);
 
         return (
           <NavLink key={href} href={href} title={label} active={active}>
