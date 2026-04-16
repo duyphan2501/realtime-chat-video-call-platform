@@ -2,25 +2,29 @@
 import { useState, useCallback } from "react";
 import type { User } from "@/types";
 import { useAuthStore, useConversationStore, useFriendStore } from "@/store";
-import ContactList from "./ContactList";
-import ContactDetail from "./ContactDetail";
 import { useFriendService } from "@/services";
 import { useRouter } from "next/navigation";
 import { conversationAPI } from "@/API/conversation.api";
 import useAxiosPrivate from "@/hooks/useAxiosPrivate";
 import toast from "react-hot-toast";
-import { Users } from "lucide-react";
+import { UserPlus, Users } from "lucide-react";
+
+import ContactList from "./ContactList";
+import ContactDetail from "./ContactDetail";
+import AddFriendModal from "./AddFriendModal";
 
 export default function ContactsPage() {
   const [selectedContact, setSelectedContact] = useState<User | null>(null);
+  const [showAddFriendModal, setShowAddFriendModal] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
   const friends = useFriendStore((s) => s.friends);
+  const friendRequests = useFriendStore((s) => s.friendRequests);
   const { unfriend } = useFriendService();
   const setActiveId = useConversationStore((s) => s.setActiveId);
   const router = useRouter();
   const axiosPrivate = useAxiosPrivate();
 
-  /* ── Mở chat với contact ────────────────────── */
+  /* ── Open chat with contact ────────────────────── */
   const handleStartChat = useCallback(
     async (userId: string) => {
       try {
@@ -35,21 +39,21 @@ export default function ContactsPage() {
           router.push("/");
         }
       } catch {
-        toast.error("Không thể mở cuộc trò chuyện");
+        toast.error("Failed to open conversation");
       }
     },
     [axiosPrivate, setActiveId, router],
   );
 
-  /* ── Huỷ kết bạn ───────────────────────────── */
+  /* ── Unfriend ───────────────────────────── */
   const handleUnfriend = useCallback(
     async (userId: string) => {
       try {
         await unfriend(userId);
         if (selectedContact?._id === userId) setSelectedContact(null);
-        toast.success("Đã huỷ kết bạn");
+        toast.success("Unfriended");
       } catch {
-        toast.error("Không thể huỷ kết bạn");
+        toast.error("Failed to unfriend");
       }
     },
     [unfriend, selectedContact],
@@ -60,26 +64,58 @@ export default function ContactsPage() {
     : false;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-dark-primary">
-      {/* ── Panel trái ─────────────────────────── */}
-      <ContactList
-        selectedId={selectedContact?._id ?? null}
-        onSelect={setSelectedContact}
-      />
+    <div className="flex h-screen overflow-hidden bg-[#f6f6f8] dark:bg-[#0b0b18]">
+      {/* ── Main Content ─────────────────────────── */}
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* ── Header ─────────────────────────────── */}
+        <header className="h-20 flex items-center justify-between px-8 border-b border-slate-200 dark:border-slate-800 shrink-0 bg-white dark:bg-[#101022]">
+          <div className="flex items-center gap-4">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+              Contacts
+            </h2>
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+            <p className="text-sm text-slate-500">
+              {friends.length} friends
+            </p>
+          </div>
 
-      {/* ── Panel phải ─────────────────────────── */}
-      <div className="flex-1 overflow-hidden">
-        {selectedContact ? (
-          <ContactDetail
-            contact={selectedContact}
-            isFriend={isFriend}
-            onStartChat={handleStartChat}
-            onUnfriend={handleUnfriend}
-          />
-        ) : (
-          <EmptyState />
-        )}
-      </div>
+          <button
+            onClick={() => setShowAddFriendModal(true)}
+            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors"
+          >
+            <UserPlus className="w-4 h-4" />
+            Add Friend
+          </button>
+        </header>
+
+        {/* ── Contact List ─────────────────────────── */}
+        <div className="flex-1 overflow-hidden flex">
+          <div className="flex-1 overflow-hidden">
+            <ContactList
+              selectedId={selectedContact?._id ?? null}
+              onSelect={setSelectedContact}
+              onStartChat={handleStartChat}
+            />
+          </div>
+
+          {/* ── Contact Detail (Right Panel) ───────── */}
+          {selectedContact ? (
+            <ContactDetail
+              contact={selectedContact}
+              isFriend={isFriend}
+              onStartChat={handleStartChat}
+              onUnfriend={handleUnfriend}
+            />
+          ) : (
+            <EmptyState />
+          )}
+        </div>
+      </main>
+
+      <AddFriendModal
+        isOpen={showAddFriendModal}
+        onClose={() => setShowAddFriendModal(false)}
+      />
     </div>
   );
 }
@@ -87,16 +123,18 @@ export default function ContactsPage() {
 /* ── Empty state ─────────────────────────────────────────── */
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
+    <aside className="hidden xl:flex w-80 flex-col items-center justify-center border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-[#101022]">
       <div className="w-20 h-20 rounded-3xl flex items-center justify-center bg-primary/10">
         <Users className="w-10 h-10 text-primary" />
       </div>
-      <div>
-        <p className="font-bold text-lg mb-1 text-white">Danh bạ</p>
-        <p className="text-sm text-gray-400">
-          Chọn một liên hệ để xem thông tin
+      <div className="text-center mt-4">
+        <p className="font-bold text-lg mb-1 text-slate-900 dark:text-white">
+          Select a contact
+        </p>
+        <p className="text-sm text-slate-500">
+          Choose a contact to view their profile
         </p>
       </div>
-    </div>
+    </aside>
   );
 }

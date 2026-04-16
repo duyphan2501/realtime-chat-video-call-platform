@@ -1,26 +1,39 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { User } from "@/types";
-import { useFriendStore, usePresenceStore } from "@/store";
-import { Search, UserPlus, X, Check, UserCheck } from "lucide-react";
+import { useFriendStore } from "@/store";
 import { useFriendService } from "@/services";
+import { UserPlus } from "lucide-react";
 import toast from "react-hot-toast";
 
-type Tab = "friends" | "requests" | "search";
+import SearchBar from "./SearchBar";
+import ContactRow from "./ContactRow";
+import RequestCard from "./RequestCard";
+import SearchResultRow from "./SearchResultRow";
+import ContactSkeleton from "./ContactSkeleton";
+import { usePresenceStore } from "@/store";
 
-interface Props {
+type TabId = "all" | "online" | "pending" | "blocked";
+
+interface ContactListProps {
   selectedId: string | null;
   onSelect: (user: User) => void;
+  onStartChat: (userId: string) => void;
 }
 
-export default function ContactList({ selectedId, onSelect }: Props) {
-  const [tab, setTab] = useState<Tab>("friends");
+export default function ContactList({
+  selectedId,
+  onSelect,
+  onStartChat,
+}: ContactListProps) {
+  const [tab, setTab] = useState<TabId>("all");
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [pendingSend, setPendingSend] = useState<Set<string>>(new Set());
 
   const friends = useFriendStore((s) => s.friends);
   const friendRequests = useFriendStore((s) => s.friendRequests);
+  const isOnline = usePresenceStore((s) => s.isOnline);
 
   const {
     isLoadingFriends,
@@ -33,6 +46,10 @@ export default function ContactList({ selectedId, onSelect }: Props) {
     searchUsers,
   } = useFriendService();
 
+  // Separate online and offline friends
+  const onlineFriends = friends.filter((f) => isOnline(f._id));
+  const offlineFriends = friends.filter((f) => !isOnline(f._id));
+
   /* ── Load data on mount ─────────────────────── */
   useEffect(() => {
     loadFriends();
@@ -42,7 +59,7 @@ export default function ContactList({ selectedId, onSelect }: Props) {
   /* ── Search debounce ────────────────────────── */
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (tab !== "search") return;
+    if (tab !== "all" && tab !== "online") return;
     if (!query.trim()) {
       setSearchResults([]);
       return;
@@ -59,22 +76,19 @@ export default function ContactList({ selectedId, onSelect }: Props) {
     };
   }, [query, tab]);
 
-  /* ── Alphabetical grouping ──────────────────── */
-  const grouped = groupByFirstLetter(friends);
-
   /* ── Handlers ───────────────────────────────── */
   const handleSendRequest = async (user: User) => {
     setPendingSend((prev) => new Set(prev).add(user._id));
     try {
       await sendFriendRequest(user._id);
-      toast.success(`Đã gửi lời mời đến ${user.name}`);
+      toast.success(`Sent friend request to ${user.name}`);
       setSearchResults((prev) =>
         prev.map((u) =>
-          u._id === user._id ? { ...u, friendStatus: "sent" } : u,
-        ),
+          u._id === user._id ? { ...u, friendStatus: "sent" } : u
+        )
       );
-    } catch (error: any) {
-      toast.error("Không thể gửi lời mời");
+    } catch {
+      toast.error("Failed to send request");
     } finally {
       setPendingSend((prev) => {
         const s = new Set(prev);
@@ -87,9 +101,9 @@ export default function ContactList({ selectedId, onSelect }: Props) {
   const handleAccept = async (user: User) => {
     try {
       await acceptFriendRequest(user._id);
-      toast.success(`Đã kết bạn với ${user.name}`);
+      toast.success(`You are now friends with ${user.name}`);
     } catch {
-      toast.error("Lỗi khi chấp nhận lời mời");
+      toast.error("Failed to accept request");
     }
   };
 
@@ -97,393 +111,191 @@ export default function ContactList({ selectedId, onSelect }: Props) {
     try {
       await rejectFriendRequest(user._id);
     } catch {
-      toast.error("Lỗi khi từ chối lời mời");
+      toast.error("Failed to reject request");
     }
   };
 
   return (
-    <div className="flex flex-col h-full shrink-0 w-[320px] bg-dark-primary border-r border-gray-800">
-      {/* ── Header ─────────────────────────────── */}
-      <div className="px-4 pt-6 pb-2 shrink-0">
-        <h1 className="font-bold  mb-3 pb-2 text-white px-1">Danh bạ</h1>
+    <div className="flex flex-col h-full bg-[#f6f6f8] dark:bg-[#0b0b18]">
+      {/* ── Search Bar ─────────────────────────────── */}
+      <div className="px-8 py-4 shrink-0">
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder={
+            tab === "pending" ? "Search pending requests..." : "Search for friends or handles..."
+          }
+        />
+      </div>
 
-        {/* Search bar */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl mb-3 bg-dark-gray border border-gray-800 focus-within:border-primary transition-colors">
-          <Search className="w-4 h-4 shrink-0 text-gray-400" />
-          <input
-            type="text"
-            placeholder={
-              tab === "search" ? "Tìm bằng tên hoặc email..." : "Tìm bạn bè..."
-            }
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              if (tab !== "search" && e.target.value) setTab("search");
-            }}
-            onFocus={() => {
-              if (query) setTab("search");
-            }}
-            className="flex-1 bg-transparent text-sm outline-none text-white placeholder:text-gray-500"
-          />
-          {query && (
-            <button
-              onClick={() => {
-                setQuery("");
-                setSearchResults([]);
-              }}
-              className="text-gray-400 hover:text-white transition"
-            >
-              <X className="w-4 h-4" />
-            </button>
+      {/* ── Tabs ─────────────────────────────────── */}
+      <div className="flex gap-6 px-8 border-b border-slate-200 dark:border-slate-800">
+        <button
+          onClick={() => setTab("all")}
+          className={`text-sm font-medium pb-4 pt-1 -mb-[2px] transition-colors border-b-2 ${
+            tab === "all"
+              ? "text-primary border-primary"
+              : "text-slate-500 hover:text-slate-900 dark:hover:text-white border-transparent"
+          }`}
+        >
+          All Friends
+          <span className="ml-2 text-xs text-slate-400">{friends.length}</span>
+        </button>
+        <button
+          onClick={() => setTab("online")}
+          className={`text-sm font-medium pb-4 pt-1 -mb-[2px] transition-colors border-b-2 ${
+            tab === "online"
+              ? "text-primary border-primary"
+              : "text-slate-500 hover:text-slate-900 dark:hover:text-white border-transparent"
+          }`}
+        >
+          Online
+          <span className="ml-2 text-xs text-green-500">{onlineFriends.length}</span>
+        </button>
+        <button
+          onClick={() => setTab("pending")}
+          className={`text-sm font-medium pb-4 pt-1 -mb-[2px] transition-colors border-b-2 ${
+            tab === "pending"
+              ? "text-primary border-primary"
+              : "text-slate-500 hover:text-slate-900 dark:hover:text-white border-transparent"
+          }`}
+        >
+          Pending
+          {friendRequests.length > 0 && (
+            <span className="ml-2 bg-primary px-1.5 py-0.5 rounded text-[10px] text-white">
+              {friendRequests.length}
+            </span>
           )}
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-1 text-sm border-b border-gray-800">
-          <TabBtn
-            id="friends"
-            active={tab === "friends"}
-            onClick={() => {
-              setTab("friends");
-              setQuery("");
-            }}
-          >
-            Bạn bè
-          </TabBtn>
-          <TabBtn
-            id="requests"
-            active={tab === "requests"}
-            onClick={() => {
-              setTab("requests");
-              setQuery("");
-            }}
-            badge={friendRequests.length}
-          >
-            Lời mời
-          </TabBtn>
-          <TabBtn
-            id="search"
-            active={tab === "search"}
-            onClick={() => setTab("search")}
-          >
-            Tìm kiếm
-          </TabBtn>
-        </div>
+        </button>
+        <button
+          onClick={() => setTab("blocked")}
+          className={`text-sm font-medium pb-4 pt-1 -mb-[2px] transition-colors border-b-2 ${
+            tab === "blocked"
+              ? "text-primary border-primary"
+              : "text-slate-500 hover:text-slate-900 dark:hover:text-white border-transparent"
+          }`}
+        >
+          Blocked
+        </button>
       </div>
 
       {/* ── Content ────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto">
-        {/* Friends Tab */}
-        {tab === "friends" && (
-          <>
-            {isLoadingFriends ? (
-              <FriendsSkeleton />
-            ) : friends.length === 0 ? (
-              <Empty icon="👥" text="Chưa có bạn bè nào" />
-            ) : (
-              Object.entries(grouped)
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([letter, users]) => (
-                  <div key={letter}>
-                    <div className="px-4 py-1.5 text-xs font-bold sticky top-0 z-10 text-gray-400 bg-dark-primary border-b border-gray-800">
-                      {letter}
-                    </div>
-                    {users.map((u) => (
-                      <FriendRow
-                        key={u._id}
-                        user={u}
-                        selected={selectedId === u._id}
-                        onClick={() => onSelect(u)}
-                      />
-                    ))}
-                  </div>
-                ))
-            )}
-          </>
-        )}
-
-        {/* Requests Tab */}
-        {tab === "requests" && (
-          <>
-            {friendRequests.length === 0 ? (
-              <Empty icon="💌" text="Không có lời mời nào" />
-            ) : (
-              <div className="p-3 flex flex-col gap-2">
-                {friendRequests.map((u) => (
-                  <RequestCard
-                    key={u._id}
-                    user={u}
-                    onAccept={() => handleAccept(u)}
-                    onReject={() => handleReject(u)}
-                    onClick={() => onSelect(u)}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Search Tab */}
-        {tab === "search" && (
-          <>
-            {isSearching ? (
-              <FriendsSkeleton />
-            ) : !query.trim() ? (
-              <Empty icon="🔍" text="Nhập tên hoặc email để tìm kiếm" />
-            ) : searchResults.length === 0 ? (
-              <Empty icon="😶" text="Không tìm thấy kết quả" />
-            ) : (
-              <div className="p-3 flex flex-col gap-1">
-                {searchResults.map((u) => {
-                  const isFriend =
-                    u.friendStatus === "friend" ||
-                    friends.some((f) => f._id === u._id);
-                  const isSent =
-                    u.friendStatus === "sent" || pendingSend.has(u._id);
-                  return (
-                    <SearchResultRow
-                      key={u._id}
-                      user={u}
-                      isFriend={isFriend}
-                      isSent={isSent}
-                      selected={selectedId === u._id}
-                      onClick={() => onSelect(u)}
-                      onAddFriend={() => handleSendRequest(u)}
+      <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <div className="max-w-6xl mx-auto space-y-1">
+          {/* All Friends Tab */}
+          {tab === "all" && (
+            <>
+              {isLoadingFriends ? (
+                <ContactSkeleton />
+              ) : friends.length === 0 ? (
+                <EmptyState icon="👥" text="No friends yet. Start adding!" />
+              ) : (
+                <>
+                  {/* Online Section */}
+                  <SectionHeader label="Online" count={onlineFriends.length} />
+                  {onlineFriends.map((user) => (
+                    <ContactRow
+                      key={user._id}
+                      user={user}
+                      selected={selectedId === user._id}
+                      onClick={() => onSelect(user)}
+                      onStartChat={onStartChat}
                     />
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
+                  ))}
+
+                  {/* Offline Section */}
+                  <SectionHeader label="Offline" count={offlineFriends.length} />
+                  {offlineFriends.map((user) => (
+                    <ContactRow
+                      key={user._id}
+                      user={user}
+                      selected={selectedId === user._id}
+                      onClick={() => onSelect(user)}
+                      onStartChat={onStartChat}
+                    />
+                  ))}
+                </>
+              )}
+            </>
+          )}
+
+          {/* Online Tab */}
+          {tab === "online" && (
+            <>
+              {isLoadingFriends ? (
+                <ContactSkeleton />
+              ) : onlineFriends.length === 0 ? (
+                <EmptyState icon="🌐" text="No friends online right now" />
+              ) : (
+                <>
+                  <SectionHeader label="Online" count={onlineFriends.length} />
+                  {onlineFriends.map((user) => (
+                    <ContactRow
+                      key={user._id}
+                      user={user}
+                      selected={selectedId === user._id}
+                      onClick={() => onSelect(user)}
+                      onStartChat={onStartChat}
+                    />
+                  ))}
+                </>
+              )}
+            </>
+          )}
+
+          {/* Pending Tab */}
+          {tab === "pending" && (
+            <>
+              {friendRequests.length === 0 ? (
+                <EmptyState icon="💌" text="No pending friend requests" />
+              ) : (
+                <div className="flex flex-col gap-2 pt-2">
+                  {friendRequests.map((user) => (
+                    <RequestCard
+                      key={user._id}
+                      user={user}
+                      onAccept={() => handleAccept(user)}
+                      onReject={() => handleReject(user)}
+                      onClick={() => onSelect(user)}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Blocked Tab */}
+          {tab === "blocked" && (
+            <EmptyState icon="🚫" text="No blocked users" />
+          )}
+        </div>
       </div>
+
+      {/* ── Add Friend FAB (mobile) ─────────────── */}
+      <button className="fixed bottom-6 right-6 lg:hidden flex items-center gap-2 bg-primary text-white px-4 py-3 rounded-full shadow-lg hover:bg-blue-600 transition-colors">
+        <UserPlus className="w-5 h-5" />
+        <span className="text-sm font-semibold">Add Friend</span>
+      </button>
     </div>
   );
 }
 
 /* ── Sub-components ───────────────────────────────────────── */
 
-function TabBtn({
-  id,
-  active,
-  onClick,
-  badge,
-  children,
-}: {
-  id: string;
-  active: boolean;
-  onClick: () => void;
-  badge?: number;
-  children: React.ReactNode;
-}) {
+function SectionHeader({ label, count }: { label: string; count: number }) {
+  if (count === 0) return null;
   return (
-    <button
-      onClick={onClick}
-      className={`relative flex items-center gap-1 px-3 py-2 text-sm font-medium transition-all border-b-2 ${
-        active
-          ? "text-primary border-primary"
-          : "text-gray-400 border-transparent hover:text-gray-200"
-      }`}
-    >
-      {children}
-      {!!badge && badge > 0 && (
-        <span className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded-full leading-none bg-red-500">
-          {badge > 99 ? "99+" : badge}
-        </span>
-      )}
-    </button>
-  );
-}
-
-function FriendRow({
-  user,
-  selected,
-  onClick,
-}: {
-  user: User;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  const isOnline = usePresenceStore((s) => s.isOnline);
-  const online = isOnline(user._id);
-
-  return (
-    <div
-      onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left cursor-pointer ${
-        selected ? "bg-gray-800" : "hover:bg-gray-800/50"
-      }`}
-    >
-      <div className="relative shrink-0">
-        <img
-          src={
-            user.avatar ||
-            `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=e3e8f0&color=0068FF&bold=true&size=40`
-          }
-          className="w-10 h-10 rounded-full object-cover"
-          alt={user.name}
-        />
-        {online && (
-          <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-dark-primary bg-green-500" />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate text-white">{user.name}</p>
-        <p
-          className={`text-xs truncate ${online ? "text-green-500" : "text-gray-400"}`}
-        >
-          {online ? "Đang hoạt động" : "Ngoại tuyến"}
-        </p>
-      </div>
+    <div className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+      {label} — {count}
     </div>
   );
 }
 
-function RequestCard({
-  user,
-  onAccept,
-  onReject,
-  onClick,
-}: {
-  user: User;
-  onAccept: () => void;
-  onReject: () => void;
-  onClick: () => void;
-}) {
+function EmptyState({ icon, text }: { icon: string; text: string }) {
   return (
-    <div
-      className="rounded-2xl p-3 flex items-center gap-3 cursor-pointer transition-colors bg-dark-gray hover:bg-gray-800"
-      onClick={onClick}
-    >
-      <img
-        src={
-          user.avatar ||
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=e3e8f0&color=0068FF&bold=true&size=40`
-        }
-        className="w-10 h-10 rounded-full object-cover shrink-0"
-        alt={user.name}
-      />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate text-white">{user.name}</p>
-        <p className="text-xs truncate text-gray-400">{user.email}</p>
-        <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={onAccept}
-            className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold text-white transition-all active:scale-95 bg-primary hover:bg-blue-600"
-          >
-            <Check className="w-3 h-3" />
-            Đồng ý
-          </button>
-          <button
-            onClick={onReject}
-            className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold transition-all active:scale-95 bg-gray-700 text-gray-300 hover:bg-gray-600"
-          >
-            <X className="w-3 h-3" />
-            Từ chối
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SearchResultRow({
-  user,
-  isFriend,
-  isSent,
-  selected,
-  onClick,
-  onAddFriend,
-}: {
-  user: User;
-  isFriend: boolean;
-  isSent: boolean;
-  selected: boolean;
-  onClick: () => void;
-  onAddFriend: () => void;
-}) {
-  return (
-    <div
-      onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left cursor-pointer ${
-        selected ? "bg-gray-800" : "hover:bg-gray-800/50"
-      }`}
-    >
-      <img
-        src={
-          user.avatar ||
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=e3e8f0&color=0068FF&bold=true&size=40`
-        }
-        className="w-10 h-10 rounded-full object-cover shrink-0"
-        alt={user.name}
-      />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate text-white">{user.name}</p>
-        <p className="text-xs truncate text-gray-400">{user.email}</p>
-      </div>
-      <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-        {isFriend ? (
-          <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary">
-            <UserCheck className="w-3 h-3" />
-            Bạn bè
-          </span>
-        ) : isSent ? (
-          <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-700 text-gray-400">
-            Đã gửi
-          </span>
-        ) : (
-          <button
-            onClick={onAddFriend}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-white transition-all active:scale-95 bg-primary hover:bg-blue-600"
-          >
-            <UserPlus className="w-3 h-3" />
-            Kết bạn
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function FriendsSkeleton() {
-  return (
-    <div className="p-4 flex flex-col gap-3">
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className="flex items-center gap-3 animate-pulse">
-          <div className="w-10 h-10 rounded-full bg-gray-800" />
-          <div className="flex-1 flex flex-col gap-1.5">
-            <div className="h-3 rounded-full w-2/3 bg-gray-800" />
-            <div className="h-2.5 rounded-full w-1/3 bg-gray-800" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Empty({ icon, text }: { icon: string; text: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400">
+    <div className="flex flex-col items-center justify-center py-16 gap-3">
       <span className="text-4xl">{icon}</span>
-      <p className="text-sm">{text}</p>
+      <p className="text-sm text-slate-500">{text}</p>
     </div>
-  );
-}
-
-/* ── Helpers ──────────────────────────────────────────────── */
-function groupByFirstLetter(users: User[]): Record<string, User[]> {
-  return users.reduce(
-    (acc, user) => {
-      const letter = user.name
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .charAt(0)
-        .toUpperCase();
-      const key = /[A-Z]/.test(letter) ? letter : "#";
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(user);
-      return acc;
-    },
-    {} as Record<string, User[]>,
   );
 }
