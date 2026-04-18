@@ -75,7 +75,7 @@ export default function BubbleImages({
 
         return (
           <div
-            key={img.name || i}
+            key={img.name+i || i}
             onClick={() => onClickIndex(i)}
             className={`
               relative cursor-pointer overflow-hidden bg-gray-200 hover:opacity-90 transition-opacity

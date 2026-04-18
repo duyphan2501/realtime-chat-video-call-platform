@@ -159,7 +159,7 @@ export default function MessageBubble({
           >
             {/* Emoji picker */}
             <div className="relative group/emoji">
-              <button
+              {/* <button
                 className="w-6 h-6 flex items-center justify-center rounded-full text-xs transition-all duration-300 active:scale-90 cursor-pointer"
                 style={{
                   background: "var(--color-s3)",
@@ -167,7 +167,7 @@ export default function MessageBubble({
                 }}
               >
                 😊
-              </button>
+              </button> */}
 
               {/* Emoji Picker Menu */}
               <div

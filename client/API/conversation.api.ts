@@ -23,4 +23,14 @@ export const conversationAPI = (axiosPrivate: AxiosInstance) => ({
     name?: string;
     avatar?: { url: string; publicId: string };
   }) => axiosPrivate.post("/conversations/create", payload),
+
+  getMedia: (payload: {
+    conversationId: string;
+    tab: "media" | "file";
+    page: number,
+    limit?: number;
+  }) =>
+    axiosPrivate.get(
+      `/conversations/${payload.conversationId}/media?limit=${payload.limit}&page=${payload.page}&tab=${payload.tab}`,
+    ),
 });

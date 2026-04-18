@@ -1,11 +1,12 @@
 import { useAPI } from "@/API/useAPI";
 import { useConversationStore, useMessageStore } from "@/store";
-import { useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 export const useMessageService = () => {
   const api = useAPI().message;
   const uploadApi = useAPI().upload;
+  const queryClient = useQueryClient();
 
   const { messages, meta, setMessages, prependMessages, addMessage } =
     useMessageStore((s) => s);
@@ -88,7 +89,7 @@ export const useMessageService = () => {
         if (imgRes) attachments.push(...imgRes.data.uploadedImages);
         if (docRes) attachments.push(...docRes.data.uploadedDocuments);
       }
- 
+
       // 2. Gửi tin nhắn cuối cùng
       return api.sendMessage({
         conversationId,
@@ -103,6 +104,12 @@ export const useMessageService = () => {
       const newMessage = res.data.data;
       useConversationStore.getState().bumpConversation(newMessage);
       addMessage(newMessage as any);
+      if (newMessage.attachments.length > 0) {
+        // Ép phần Info tải lại dữ liệu mới
+        queryClient.invalidateQueries({
+          queryKey: ["shared-content-infinite", newMessage.conversation],
+        });
+      }
     },
     onError: (error: any, variables: any) => {
       const { tempId } = variables;

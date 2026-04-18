@@ -25,13 +25,6 @@ const ROLE_BADGE: Record<
   member: null,
 };
 
-const actions = [
-  { label: "View Profile", onClick: () => {} },
-  { label: "Send Message", onClick: () => {} },
-  { label: "Make Admin", onClick: () => {} },
-  { label: "Remove from Group", onClick: () => {} },
-];
-
 export default function MembersAccordion({
   conversation,
 }: MembersAccordionProps) {
@@ -39,6 +32,15 @@ export default function MembersAccordion({
     return null; // Don't show members accordion for direct messages
   }
 
+  const actions = useMemo(
+    () => [
+      { label: "View Profile", onClick: () => {} },
+      { label: "Send Message", onClick: () => {} },
+      { label: "Make Admin", onClick: () => {} },
+      { label: "Remove from Group", onClick: () => {} },
+    ],
+    [],
+  );
   const [query, setQuery] = useState("");
   const [showActions, setShowActions] = useState<string | null>(null);
 

@@ -12,6 +12,7 @@ export default function Lightbox({
   onClose: () => void;
   onNavigate: (i: number) => void;
 }) {
+  console.log(imgs)
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"

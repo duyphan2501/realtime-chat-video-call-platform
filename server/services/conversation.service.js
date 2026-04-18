@@ -30,7 +30,8 @@ export const ConversationService = {
       .populate("participants.user", "_id name avatar lastRead lastActive")
       .populate({
         path: "lastMessage",
-        select: "content type attachments sender createdAt deletedForEveryone callData",
+        select:
+          "content type attachments sender createdAt deletedForEveryone callData",
         populate: { path: "sender", select: "_id name avatar" },
       })
       .lean();
@@ -135,5 +136,57 @@ export const ConversationService = {
     }
 
     return conversation;
+  },
+
+  getConversationMedia: async ({ conversationId, tab, limit, skip }) => {
+    const mediaRegex = /^(image|video)\//i;
+
+    let matchCriteria = {
+      conversation: new mongoose.Types.ObjectId(conversationId),
+      attachments: { $exists: true, $not: { $size: 0 } },
+      deletedForEveryone: false,
+    };
+
+    const results = await MessageModel.aggregate([
+      // Bước 1: Tìm các tin nhắn có file trong hội thoại
+      { $match: matchCriteria },
+
+      // Bước 2: "Bung" mảng attachments (Nếu 1 tin nhắn có 2 ảnh thì tách thành 2 bản ghi)
+      { $unwind: "$attachments" },
+
+      // Bước 3: Phân loại dựa trên tab người dùng chọn
+      {
+        $match:
+          tab === "media"
+            ? { "attachments.type": { $regex: mediaRegex } }
+            : { "attachments.type": { $not: { $regex: mediaRegex } } },
+      },
+
+      // Bước 4: Xử lý đa luồng (Lấy dữ liệu & Đếm tổng)
+      {
+        $facet: {
+          metadata: [{ $count: "total" }],
+          data: [
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $project: {
+                _id: 0,
+                messageId: "$_id",
+                sender: 1,
+                createdAt: 1,
+                file: "$attachments", // Đưa object attachment ra ngoài
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const total = results[0].metadata[0]?.total || 0;
+    const items = results[0].data;
+
+    return { total, items };
   },
 };

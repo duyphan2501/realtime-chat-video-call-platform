@@ -1,9 +1,35 @@
 "use client";
 import { useAPI } from "@/API/useAPI";
 import { useConversationStore } from "@/store";
-import { useMutation } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 // Xóa import { create } from "domain";
 import toast from "react-hot-toast";
+
+export const useGetInfiniteSharedContent = (
+  conversationId: string,
+  tab: "media" | "file",
+) => {
+  const convApi = useAPI().conversation;
+  return useInfiniteQuery({
+    queryKey: ["shared-content-infinite", conversationId, tab],
+    queryFn: async ({ pageParam = 1 }) => {
+      const res = await convApi.getMedia({
+        conversationId,
+        tab,
+        page: pageParam,
+      });
+      return res.data; // Trả về { data: [...], total, currentPage, totalPages }
+    },
+    getNextPageParam: (lastPage) => {
+      // Nếu trang hiện tại chưa phải trang cuối thì trả về page tiếp theo
+      return lastPage.currentPage < lastPage.totalPages
+        ? lastPage.currentPage + 1
+        : undefined;
+    },
+    initialPageParam: 1,
+    enabled: !!conversationId,
+  });
+};
 
 export const useConversationService = () => {
   const api = useAPI();

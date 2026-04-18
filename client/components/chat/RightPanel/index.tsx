@@ -7,6 +7,7 @@ import GroupHeader from "./GroupHeader";
 import MembersAccordion from "./MembersAccordion";
 import SharedMediaAccordion from "./SharedMediaAccordion";
 import DocumentsAccordion from "./DocumentsAccordion";
+import { useGetInfiniteSharedContent } from "@/services";
 
 interface Props {
   conversationId: string;
@@ -18,6 +19,7 @@ export default function RightPanel({ conversationId, onClose }: Props) {
   const conversation = useConversationStore(
     useShallow((state) => state.conversations.get(conversationId)),
   );
+  const sharedFiles = useGetInfiniteSharedContent(conversationId, "file");
 
   const isGroup = conversation?.type === "group";
 
@@ -49,9 +51,7 @@ export default function RightPanel({ conversationId, onClose }: Props) {
         </div>
 
         <div className="flex flex-col divide-y divide-gray">
-          <MembersAccordion 
-            conversation={conversation} 
-          />
+          <MembersAccordion conversation={conversation} />
           <SharedMediaAccordion conversationId={conversation._id} />
           <DocumentsAccordion conversationId={conversation._id} />
         </div>

@@ -18,8 +18,8 @@ async function uploadFiles(files, options) {
         url: result.secure_url,
         name: file.originalname,
         publicId: result.public_id,
-        size: result.bytes, // Thêm dung lượng file
-        format: result.format, // Thêm định dạng (jpg, pdf, docx...)
+        size: result.bytes,
+        format: result.format || file.originalname.split(".").pop(),
         type: file.mimetype,
       };
     });

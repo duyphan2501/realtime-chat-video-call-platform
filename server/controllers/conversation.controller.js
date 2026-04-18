@@ -19,7 +19,7 @@ const getConversations = async (req, res, next) => {
   }
 };
 
-const markAsRead = async(req, res, next) => {
+const markAsRead = async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.user.userId;
@@ -57,4 +57,36 @@ const createConversation = async (req, res, next) => {
   }
 };
 
-export const ConversationController = { getConversations, markAsRead, createConversation };
+export const getConversationMedia = async (req, res, next) => {
+  try {
+    const conversationId = req.params.id;
+    const { tab } = req.query; // Nhận vào 'media' hoặc 'file'
+    const limit = parseInt(req.query.limit) || 20;
+    const page = parseInt(req.query.page) || 1;
+    const skip = (page - 1) * limit;
+
+    const { total, items } = await ConversationService.getConversationMedia({
+      conversationId,
+      tab,
+      limit,
+      skip,
+    });
+
+    return res.status(200).json({
+      success: true,
+      total,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      data: items,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const ConversationController = {
+  getConversations,
+  markAsRead,
+  createConversation,
+  getConversationMedia,
+};
