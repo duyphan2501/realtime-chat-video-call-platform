@@ -23,6 +23,7 @@ import IconBtn from "../IconBtn";
 import { useConversationService, useMessageService } from "@/services";
 import RightPanel from "./RightPanel";
 import { getAvatar } from "@/utils/user.utils";
+import { useChatScroll } from "@/hooks/useChatScroll";
 
 interface Props {
   conversation: Conversation;
@@ -36,13 +37,8 @@ export default function ChatWindow({
   onStartCall,
 }: Props) {
   const [isRightPanelOpen, setRightPanelOpen] = useState(false);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
-
-  // "force" = mới mở conv → scroll instant, không check vị trí
-  // "smooth" = vừa gửi / nhận tin khi đang ở cuối → scroll mượt
-  // "none"   = user đang kéo lên đọc tin cũ → không scroll
-  const scrollIntent = useRef<"force" | "smooth" | "none">("force");
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   const messages = useMessageStore(
     useShallow((s) => s.messages[conv._id] || []),
@@ -55,74 +51,6 @@ export default function ChatWindow({
     useShallow((s) => s.typingUsers[conv._id] || []),
   );
   const sender = useAuthStore((s) => s.user);
-
-  /* ── Helpers ─────────────────────────────────── */
-  const isAtBottom = () => {
-    const el = messagesContainerRef.current;
-    if (!el) return true;
-    return el.scrollHeight - el.scrollTop - el.clientHeight < 100;
-  };
-
-  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
-    const el = messagesContainerRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior });
-  };
-
-  /* ── ResizeObserver + MutationObserver ───────────
-     Thay vì dùng rAF hay setTimeout (không đáng tin
-     với ảnh async), dùng ResizeObserver để scroll
-     đúng lúc container/ảnh thực sự thay đổi kích thước.
-
-     Flow:
-     1. messages thay đổi → useEffect set scrollIntent
-     2. Bubble/ảnh render → container cao lên
-     3. ResizeObserver bắt được → gọi scrollToBottom
-        với behavior từ scrollIntent                    */
-  useEffect(() => {
-    const el = messagesContainerRef.current;
-    if (!el) return;
-
-    const resizeObserver = new ResizeObserver(() => {
-      const intent = scrollIntent.current;
-      if (intent === "force") {
-        scrollToBottom("auto");
-      } else if (intent === "smooth") {
-        scrollToBottom("smooth");
-        // Reset về none sau khi scroll 1 lần để không
-        // tiếp tục kéo xuống khi user đang kéo lên đọc tin cũ
-        scrollIntent.current = "none";
-      }
-    });
-
-    // Observe container (bubble text mới → container cao lên)
-    resizeObserver.observe(el);
-
-    // MutationObserver để observe ảnh được thêm vào sau
-    // khi ảnh load xong → kích thước tăng → ResizeObserver bắt
-    const mutationObserver = new MutationObserver((mutations) => {
-      mutations.forEach((m) => {
-        m.addedNodes.forEach((node) => {
-          if (node instanceof HTMLElement) {
-            node
-              .querySelectorAll("img")
-              .forEach((img) => resizeObserver.observe(img));
-          }
-        });
-      });
-    });
-    mutationObserver.observe(el, { childList: true, subtree: true });
-
-    return () => {
-      resizeObserver.disconnect();
-      mutationObserver.disconnect();
-    };
-  }, []);
-
-  /* ── Reset intent khi đổi conversation ── */
-  useEffect(() => {
-    scrollIntent.current = "force";
-  }, [conv._id]);
 
   /* ── Load messages ───────────────────────────── */
   useEffect(() => {
@@ -137,28 +65,54 @@ export default function ChatWindow({
     };
   }, [conv._id]);
 
-  /* ── Set scroll intent khi messages thay đổi ────
-     Observer sẽ thực thi scroll, effect này chỉ
-     quyết định intent (force / smooth / none)       */
+  const { containerRef, scrollToBottom, disableAutoScrollRef, isStickyRef } =
+    useChatScroll([messages, conv._id]);
+
+  // 2. Logic hiển thị nút Scroll to Bottom (Tối ưu performance)
   useEffect(() => {
-    if (!messages.length) return;
+    const el = containerRef.current;
+    if (!el) return;
 
-    const lastMsg = messages[messages.length - 1];
-    const isMine = lastMsg.sender._id === currentUser._id;
+    const onScroll = () => {
+      // Khoảng cách > 300px thì mới hiện nút để tránh gây rối mắt
+      const isFarFromBottom =
+        el.scrollHeight - el.scrollTop - el.clientHeight > 300;
+      setShowScrollBtn(isFarFromBottom);
+    };
 
-    if (scrollIntent.current === "force") {
-      // Đang force (mới mở conv) → giữ nguyên, observer lo
-    } else if (isMine) {
-      scrollToBottom("smooth");
-      scrollIntent.current = "none";
-    } else if (isAtBottom()) {
-      // Tin người khác, đang ở cuối → scroll xuống
-      scrollIntent.current = "smooth";
-    } else {
-      // Tin người khác, đang kéo lên đọc → không làm gì
-      scrollIntent.current = "none";
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // 3. Reset trạng thái khi đổi hội thoại
+  useEffect(() => {
+    fetchMessages(conv._id);
+    // Khi đổi chat, ép nhảy xuống đáy ngay lập tức không đợi render
+    scrollToBottom("auto");
+  }, [conv._id]);
+
+  const handleScroll = useCallback(async () => {
+    const el = containerRef.current;
+    if (!el || !hasMore || isLoading) return;
+
+    if (el.scrollTop < 80) {
+      // Khóa auto scroll để giữ vị trí hiện tại
+      disableAutoScrollRef.current = true;
+      const prevHeight = el.scrollHeight;
+
+      await fetchMessages(conv._id, true);
+
+      // Tính toán lại vị trí để không bị "nhảy" màn hình sau khi prepend tin nhắn
+      requestAnimationFrame(() => {
+        if (el) {
+          el.scrollTop = el.scrollHeight - prevHeight;
+          // Mở khóa sau khi DOM đã ổn định
+          setTimeout(() => (disableAutoScrollRef.current = false), 150);
+        }
+      });
     }
-  }, [messages]);
+  }, [conv._id, hasMore, isLoading]);
+
   const { markAsRead } = useConversationService();
 
   const handleMarkAsRead = () => {
@@ -176,18 +130,6 @@ export default function ChatWindow({
     window.addEventListener("focus", handleMarkAsRead);
     return () => window.removeEventListener("focus", handleMarkAsRead);
   }, [conv._id]);
-
-  /* ── Infinite scroll ─────────────────────────── */
-  const handleScroll = useCallback(async () => {
-    const el = messagesContainerRef.current;
-    if (!el || !hasMore || isLoading) return;
-    if (el.scrollTop < 80) {
-      const prevHeight = el.scrollHeight;
-      await fetchMessages(conv._id, true);
-      // Giữ nguyên vị trí scroll sau khi prepend tin cũ
-      el.scrollTop = el.scrollHeight - prevHeight;
-    }
-  }, [conv._id, hasMore, isLoading]);
 
   /* ── Send message ────────────────────────────── */
   const handleSend = useCallback(
@@ -217,7 +159,6 @@ export default function ChatWindow({
       };
 
       addMessage(optimisticMsg as any);
-      scrollIntent.current = "smooth";
       try {
         await sendMessage({
           conversationId: conv._id,
@@ -249,7 +190,7 @@ export default function ChatWindow({
   const isOtherOnline = !isGroup && isOtherOnlineRaw;
 
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <div className="flex flex-1 overflow-hidden relative">
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-gray-800">
@@ -312,9 +253,9 @@ export default function ChatWindow({
 
         {/* ── Messages ── */}
         <div
-          ref={messagesContainerRef}
+          ref={containerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5"
+          className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5 scroll-smooth"
         >
           {isLoading && (
             <div className="flex justify-center py-2">
@@ -374,6 +315,16 @@ export default function ChatWindow({
             </div>
           )}
         </div>
+
+        {showScrollBtn && (
+          <button
+            onClick={() => scrollToBottom("smooth")}
+            className="absolute bottom-24 right-8 bg-blue-600 hover:bg-blue-700 text-white w-10 h-10 flex items-center justify-center rounded-full shadow-lg transition-all animate-bounce cursor-pointer"
+            title="Scoll to Bottom"
+          >
+            ↓
+          </button>
+        )}
 
         {/* ── Input ── */}
         <ChatInput convId={conv._id} onSend={handleSend} />
