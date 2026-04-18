@@ -1,7 +1,8 @@
 import { UserModel, FriendshipModel } from "../models/index.js";
 import createHttpError from "http-errors";
 import { filterFieldUser } from "../utils/filter.util.js";
-import { UserService } from "../services/index.js";
+import { AuthService, UserService } from "../services/index.js";
+import { io } from "../sockets/index.js";
 
 /* ═══════════════════════════════════════════════════════════
    GET /users/me
@@ -74,14 +75,26 @@ export const searchUsers = async (req, res, next) => {
 
     const friendIds = friendships
       .filter((f) => f.status === "accepted")
-      .map((f) => f.requester.toString() === userId.toString() ? f.recipient.toString() : f.requester.toString());
+      .map((f) =>
+        f.requester.toString() === userId.toString()
+          ? f.recipient.toString()
+          : f.requester.toString(),
+      );
 
     const sentToIds = friendships
-      .filter((f) => f.status === "pending" && f.requester.toString() === userId.toString())
+      .filter(
+        (f) =>
+          f.status === "pending" &&
+          f.requester.toString() === userId.toString(),
+      )
       .map((f) => f.recipient.toString());
 
     const receivedFromIds = friendships
-      .filter((f) => f.status === "pending" && f.recipient.toString() === userId.toString())
+      .filter(
+        (f) =>
+          f.status === "pending" &&
+          f.recipient.toString() === userId.toString(),
+      )
       .map((f) => f.requester.toString());
 
     const usersWithStatus = users.map((user) => {
@@ -121,7 +134,9 @@ export const getFriends = async (req, res, next) => {
 
     const friends = friendships.map((f) => {
       const friendDoc =
-        f.requester._id.toString() === userId.toString() ? f.recipient : f.requester;
+        f.requester._id.toString() === userId.toString()
+          ? f.recipient
+          : f.requester;
       return filterFieldUser(friendDoc);
     });
 
@@ -148,24 +163,26 @@ export const getFriendRequests = async (req, res, next) => {
       .populate("recipient", "-password")
       .populate("requester", "-password");
 
-    const friendRequests = requests.map((item) => {
-      // Nếu mình là recipient -> Đây là yêu cầu người khác gửi cho mình (Received)
-      if (item.recipient._id.toString() === userId) {
-        return {
-          ...filterFieldUser(item.requester),
-          friendStatus: "received",
-          requestId: item._id
-        };
-      } 
-      // Nếu mình là requester -> Đây là yêu cầu mình gửi đi (Sent)
-      else {
-        return {
-          ...filterFieldUser(item.recipient),
-          friendStatus: "sent",
-          requestId: item._id
-        };
-      }
-    }).filter(Boolean);
+    const friendRequests = requests
+      .map((item) => {
+        // Nếu mình là recipient -> Đây là yêu cầu người khác gửi cho mình (Received)
+        if (item.recipient._id.toString() === userId) {
+          return {
+            ...filterFieldUser(item.requester),
+            friendStatus: "received",
+            requestId: item._id,
+          };
+        }
+        // Nếu mình là requester -> Đây là yêu cầu mình gửi đi (Sent)
+        else {
+          return {
+            ...filterFieldUser(item.recipient),
+            friendStatus: "sent",
+            requestId: item._id,
+          };
+        }
+      })
+      .filter(Boolean);
 
     res.status(200).json({ success: true, friendRequests });
   } catch (error) {
@@ -188,8 +205,11 @@ export const sendFriendRequest = async (req, res, next) => {
       );
     }
 
-    const targetUser = await UserModel.findById(targetUserId);
-    if (!targetUser) throw createHttpError.NotFound("User not found");
+    const targetUser = await AuthService.getUserById(targetUserId);
+    const sender = await AuthService.getUserById(userId);
+
+    if (!targetUser || !sender)
+      throw createHttpError.NotFound("User not found");
 
     const existing = await FriendshipModel.findOne({
       $or: [
@@ -199,7 +219,8 @@ export const sendFriendRequest = async (req, res, next) => {
     });
 
     if (existing) {
-      if (existing.status === "accepted") throw createHttpError.Conflict("Already friends");
+      if (existing.status === "accepted")
+        throw createHttpError.Conflict("Already friends");
       throw createHttpError.Conflict("Friend request already exists");
     }
 
@@ -208,6 +229,8 @@ export const sendFriendRequest = async (req, res, next) => {
       recipient: targetUserId,
       status: "pending",
     });
+    console.log(`emit to ${targetUserId}`);
+    io.to(`user_${targetUserId}`).emit("new_friend_request", { sender });
 
     res.status(200).json({ success: true, message: "Friend request sent" });
   } catch (error) {
@@ -229,10 +252,13 @@ export const acceptFriendRequest = async (req, res, next) => {
     const friendship = await FriendshipModel.findOneAndUpdate(
       { requester: senderId, recipient: userId, status: "pending" },
       { status: "accepted" },
-      { new: true }
+      { new: true },
     );
 
     if (!friendship) throw createHttpError.NotFound("Friend request not found");
+    const user = await AuthService.getUserById(userId);
+
+    io.to(`user_${senderId}`).emit("friend_request_accepted", { user });
 
     res.status(200).json({ success: true, message: "Friend request accepted" });
   } catch (error) {
@@ -259,13 +285,15 @@ export const rejectFriendRequest = async (req, res, next) => {
 
     if (!deleted) throw createHttpError.NotFound("Friend request not found");
 
+    io.to(`user_${senderId}`).emit("friend_request_cancelled", { userId });
+
     res.status(200).json({ success: true, message: "Friend request rejected" });
   } catch (error) {
     next(error);
   }
 };
 
-const cancelFriendRequest = async(req, res, next) => {
+const cancelFriendRequest = async (req, res, next) => {
   try {
     const userId = req.user.userId;
     const { userId: recipientId } = req.params;
@@ -281,11 +309,13 @@ const cancelFriendRequest = async(req, res, next) => {
 
     if (!deleted) throw createHttpError.NotFound("Friend request not found");
 
+    io.to(`user_${recipientId}`).emit("friend_request_cancelled", { userId });
+
     res.status(200).json({ success: true, message: "Friend request cancled" });
   } catch (error) {
-    next(error)
+    next(error);
   }
-}
+};
 
 /* ═══════════════════════════════════════════════════════════
    DELETE /users/friends/:userId — unfriend
@@ -307,6 +337,8 @@ export const unfriend = async (req, res, next) => {
     });
 
     if (!deleted) throw createHttpError.NotFound("Friendship not found");
+
+    io.to(`user_${friendId}`).emit("unfriend", { userId });
 
     res.status(200).json({ success: true, message: "Unfriend successful" });
   } catch (error) {
@@ -343,5 +375,5 @@ export const UserController = {
   rejectFriendRequest,
   unfriend,
   searchOnlyFriends,
-  cancelFriendRequest
+  cancelFriendRequest,
 };

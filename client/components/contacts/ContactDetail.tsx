@@ -1,13 +1,15 @@
 "use client";
 import type { User } from "@/types";
 import { usePresenceStore } from "@/store";
-import { MessageSquare, Phone, Video, UserMinus, Calendar } from "lucide-react";
+import { MessageSquare, Phone, Video, UserMinus, Calendar, X } from "lucide-react";
+import { getAvatar } from "@/utils/user.utils";
 
 interface ContactDetailProps {
   contact: User;
   isFriend: boolean;
   onStartChat: (userId: string) => void;
   onUnfriend: (userId: string) => void;
+  onClose: () => void;
 }
 
 export default function ContactDetail({
@@ -15,18 +17,26 @@ export default function ContactDetail({
   isFriend,
   onStartChat,
   onUnfriend,
+  onClose,
 }: ContactDetailProps) {
   const isOnline = usePresenceStore((s) => s.isOnline);
   const online = isOnline(contact._id);
 
-  const avatarUrl =
-    contact.avatar ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=e3e8f0&color=0068FF&bold=true&size=96`;
+  const avatarUrl = getAvatar(contact);
 
   return (
-    <aside className="hidden xl:flex w-80 flex-col border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-[#101022] overflow-y-auto">
+    <aside className="fixed inset-0 z-50 flex flex-col w-full bg-white dark:bg-[#101022] md:overflow-hidden overflow-y-auto 
+      md:relative md:z-0 md:w-80 md:border-l md:border-slate-200 md:dark:border-slate-800">
+      <div className="absolute top-4 right-4 z-10 xl:hidden">
+        <button
+          onClick={onClose}
+          className="p-2 rounded-full bg-black/20 backdrop-blur-md text-white hover:bg-black/40 transition-colors"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
       {/* ── Cover + Avatar ── */}
-      <div className="h-40 w-full bg-linear-to-br from-primary to-indigo-900 relative">
+      <div className="h-48 xl:h-40 w-full bg-linear-to-br from-primary to-indigo-900 relative shrink-0">
         <div className="absolute -bottom-10 left-6">
           <div className="h-24 w-24 rounded-2xl border-4 border-white dark:border-[#101022] bg-cover bg-center shadow-lg overflow-hidden">
             <img
@@ -44,7 +54,9 @@ export default function ContactDetail({
           {contact.name}
         </h3>
         <p className="text-sm text-slate-500 mb-6">
-          @{contact.email?.split("@")[0] || contact.name.toLowerCase().replace(/\s+/g, "")}
+          @
+          {contact.email?.split("@")[0] ||
+            contact.name.toLowerCase().replace(/\s+/g, "")}
         </p>
 
         <div className="space-y-6">
@@ -111,17 +123,7 @@ export default function ContactDetail({
               Send Message
             </button>
 
-            {/* Call & Video */}
-            <div className="flex gap-2">
-              <button className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                <Phone className="w-4 h-4" />
-                Call
-              </button>
-              <button className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                <Video className="w-4 h-4" />
-                Video
-              </button>
-            </div>
+            <div className="flex-1"></div>
 
             {/* Unfriend */}
             <button

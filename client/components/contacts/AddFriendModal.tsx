@@ -26,6 +26,7 @@ export default function AddFriendModal({
     useFriendService();
   const friends = useFriendStore((s) => s.friends);
   const friendRequests = useFriendStore((s) => s.friendRequests);
+  const addFriendRequest = useFriendStore(s => s.addFriendRequest)
 
   // Search debounce
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function AddFriendModal({
     try {
       await sendFriendRequest(user._id);
       toast.success(`Sent friend request to ${user.name}`);
+      addFriendRequest({...user, friendStatus: "sent"})
       // setResults((prev) => prev.filter((u) => u._id !== user._id));
     } catch {
       toast.error("Failed to send request");

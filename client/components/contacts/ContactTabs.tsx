@@ -32,7 +32,7 @@ export default function ContactTabs({
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
-          className={`text-sm font-medium pb-7 pt-7 -mb-[2px] transition-colors border-b-2 ${
+          className={`text-sm font-medium pb-7 pt-7 -mb-0.5 transition-colors border-b-2 ${
             activeTab === tab.id
               ? "text-primary border-primary"
               : "text-slate-500 hover:text-slate-900 dark:hover:text-white border-transparent"

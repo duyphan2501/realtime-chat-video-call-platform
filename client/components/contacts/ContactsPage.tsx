@@ -74,9 +74,7 @@ export default function ContactsPage() {
               Contacts
             </h2>
             <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-            <p className="text-sm text-slate-300">
-              {friends.length} friends
-            </p>
+            <p className="text-sm text-slate-300">{friends.length} friends</p>
           </div>
 
           <button
@@ -100,12 +98,22 @@ export default function ContactsPage() {
 
           {/* ── Contact Detail (Right Panel) ───────── */}
           {selectedContact ? (
-            <ContactDetail
-              contact={selectedContact}
-              isFriend={isFriend}
-              onStartChat={handleStartChat}
-              onUnfriend={handleUnfriend}
-            />
+            <div
+              className={`
+              fixed inset-0 z-50 bg-white dark:bg-[#101022]
+              md:relative md:inset-auto md:z-0 md:flex  md:border-l md:border-slate-200 md:dark:border-slate-800
+              ${selectedContact ? "flex" : "hidden"}
+            `}
+            >
+              <ContactDetail
+                contact={selectedContact}
+                isFriend={isFriend}
+                onStartChat={handleStartChat}
+                onUnfriend={handleUnfriend}
+                // Thêm prop onClose để đóng panel trên mobile
+                onClose={() => setSelectedContact(null)}
+              />
+            </div>
           ) : (
             <EmptyState />
           )}

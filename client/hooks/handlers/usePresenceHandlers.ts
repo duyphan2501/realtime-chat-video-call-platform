@@ -2,8 +2,6 @@ import { useEffect } from "react";
 import { useConversationStore, usePresenceStore } from "@/store";
 import type { Socket } from "socket.io-client";
 
-import { TypingUser } from "@/types";
-
 export function usePresenceHandlers(socket: Socket | null) {
   useEffect(() => {
     if (!socket) return;

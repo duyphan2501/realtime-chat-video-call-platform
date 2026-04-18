@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { User } from "@/types";
 import { useFriendStore } from "@/store";
 import { useFriendService } from "@/services";
@@ -47,9 +47,18 @@ export default function ContactList({
     cancelFriendRequest,
   } = useFriendService();
 
-  // Separate online and offline friends
-  const onlineFriends = friends.filter((f) => isOnline(f._id));
-  const offlineFriends = friends.filter((f) => !isOnline(f._id));
+  const onlineUsers = usePresenceStore((s) => s.onlineUsers);
+
+  // Tính toán lại danh sách dựa trên onlineUsers
+  // Memoize lại để tránh tính toán thừa khi các state khác (như query) thay đổi
+  const { online: onlineFriends, offline: offlineFriends } = useMemo(() => {
+    const online = friends.filter((f) => isOnline(f._id));
+    const offline = friends.filter((f) => !isOnline(f._id));
+    return { online, offline };
+  }, [friends, onlineUsers]);
+
+  console.log("Online Count:", onlineFriends.length);
+  console.log("Online Data:", onlineUsers);
 
   /* ── Load data on mount ─────────────────────── */
   useEffect(() => {
@@ -76,28 +85,6 @@ export default function ContactList({
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [query, tab]);
-
-  /* ── Handlers ───────────────────────────────── */
-  const handleSendRequest = async (user: User) => {
-    setPendingSend((prev) => new Set(prev).add(user._id));
-    try {
-      await sendFriendRequest(user._id);
-      toast.success(`Sent friend request to ${user.name}`);
-      setSearchResults((prev) =>
-        prev.map((u) =>
-          u._id === user._id ? { ...u, friendStatus: "sent" } : u
-        )
-      );
-    } catch {
-      toast.error("Failed to send request");
-    } finally {
-      setPendingSend((prev) => {
-        const s = new Set(prev);
-        s.delete(user._id);
-        return s;
-      });
-    }
-  };
 
   const handleAccept = async (user: User) => {
     try {
@@ -132,7 +119,9 @@ export default function ContactList({
           value={query}
           onChange={setQuery}
           placeholder={
-            tab === "pending" ? "Search pending requests..." : "Search for friends or handles..."
+            tab === "pending"
+              ? "Search pending requests..."
+              : "Search for friends or handles..."
           }
         />
       </div>
@@ -159,7 +148,9 @@ export default function ContactList({
           }`}
         >
           Online
-          <span className="ml-2 text-xs text-green-500">{onlineFriends.length}</span>
+          <span className="ml-2 text-xs text-green-500">
+            {onlineFriends.length}
+          </span>
         </button>
         <button
           onClick={() => setTab("pending")}
@@ -176,7 +167,6 @@ export default function ContactList({
             </span>
           )}
         </button>
-       
       </div>
 
       {/* ── Content ────────────────────────────── */}
@@ -204,7 +194,10 @@ export default function ContactList({
                   ))}
 
                   {/* Offline Section */}
-                  <SectionHeader label="Offline" count={offlineFriends.length} />
+                  <SectionHeader
+                    label="Offline"
+                    count={offlineFriends.length}
+                  />
                   {offlineFriends.map((user) => (
                     <ContactRow
                       key={user._id}
@@ -271,12 +264,6 @@ export default function ContactList({
           )}
         </div>
       </div>
-
-      {/* ── Add Friend FAB (mobile) ─────────────── */}
-      <button className="fixed bottom-6 right-6 lg:hidden flex items-center gap-2 bg-primary text-white px-4 py-3 rounded-full shadow-lg hover:bg-blue-600 transition-colors">
-        <UserPlus className="w-5 h-5" />
-        <span className="text-sm font-semibold">Add Friend</span>
-      </button>
     </div>
   );
 }
