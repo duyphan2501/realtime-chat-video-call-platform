@@ -1,11 +1,3 @@
-/* ═══════════════════════════════════════════════════════════
-   components/chat/ConversationList.tsx
-
-   TODO — backend:
-   ① Danh sách conversations đến từ conversationApi.getAll()
-      đã được load ở page.tsx và lưu vào chatStore
-   ② Tạo nhóm: mở CreateGroupModal
-   ═══════════════════════════════════════════════════════════ */
 "use client";
 import { useEffect, useState } from "react";
 import type { Conversation, User } from "@/types";
@@ -62,7 +54,6 @@ export default function ConversationList({
       socket.emit("join_conversation", activeId);
     };
 
-    // Nếu socket đã kết nối sẵn (trường hợp chuyển tab hoặc mount lại)
     if (socket.connected) {
       handleReconnect();
     }
@@ -79,7 +70,7 @@ export default function ConversationList({
       {/* Header */}
       <div className="px-4 pt-4">
         <div className="flex items-center justify-between mb-3">
-          <span className="font-bold text-base text-white">Messages</span>
+          <span className="font-bold text-base text-white">Tin nhắn</span>
           <div className="flex gap-1">
             {/* TODO: filter / sort options */}
             <IconBtn title="Lọc" onClick={() => {}}>
@@ -93,7 +84,6 @@ export default function ConversationList({
                 <path strokeLinecap="round" d="M3 4h18M7 12h10M11 20h2" />
               </svg>
             </IconBtn>
-            {/* TODO ②: mở CreateGroupModal */}
             <IconBtn title="Tạo nhóm" onClick={onCreateGroup}>
               +
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">

@@ -9,6 +9,35 @@ type LoginCredentials = {
   password: string;
 };
 
+type RegisterCredentials = {
+  name: string;
+  email: string;
+  password?: string;
+};
+
+type VerifyEmailPayload = {
+  email: string;
+  code: string;
+};
+
+type ForgotPasswordPayload = {
+  email: string;
+};
+
+type ResetPasswordPayload = {
+  email: string;
+  code: string;
+  newPassword: string;
+};
+
+type UpdateProfilePayload = {
+  name?: string;
+  bio?: string;
+  phone?: string;
+  gender?: string;
+  dob?: string;
+};
+
 export const useAuthService = () => {
   const api = useAPI();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -45,7 +74,11 @@ export const useAuthService = () => {
   const getMeMutation = useMutation({
     mutationFn: () => api.auth.getMe(),
     onSuccess: (res) => setAuth(res.data.user, res.data.accessToken),
-    onError: () => setSessionExpired(true),
+    onError: () => {
+      clearAuth();
+      queryClient.clear();
+      router.push("/auth");
+    },
   });
 
   const logoutMutation = useMutation({
@@ -53,10 +86,94 @@ export const useAuthService = () => {
     onSettled: () => {
       clearAuth();
       queryClient.clear();
-      router.push("/login");
+      router.push("/auth");
       toast.success("Logged out successfully");
     },
   });
+
+  const registerMutation = useMutation({
+    mutationFn: (credentials: RegisterCredentials) => api.auth.register(credentials),
+    onError: (error: any) => {
+      const msg = error.response?.data?.message || "Failed to register";
+      toast.error(msg);
+    },
+  });
+
+  const verifyEmailMutation = useMutation({
+    mutationFn: (payload: VerifyEmailPayload) => api.auth.verifyEmail(payload),
+    onError: (error: any) => {
+      const msg = error.response?.data?.message || "Failed to verify email";
+      toast.error(msg);
+    },
+  });
+
+  const forgotPasswordMutation = useMutation({
+    mutationFn: (payload: ForgotPasswordPayload) => api.auth.forgotPassword(payload),
+    onError: (error: any) => {
+      const msg = error.response?.data?.message || "Failed to send reset password email";
+      toast.error(msg);
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: (payload: ResetPasswordPayload) => api.auth.resetPassword(payload),
+    onError: (error: any) => {
+      const msg = error.response?.data?.message || "Failed to reset password";
+      toast.error(msg);
+    },
+  });
+
+  const updateProfileMutation = useMutation({
+    mutationFn: (payload: UpdateProfilePayload) => api.auth.updateProfile(payload),
+    onSuccess: (res, variables) => {
+      toast.success(res.data?.message || "Cập nhật thông tin thành công");
+      const currentUser = useAuthStore.getState().user;
+      const accessToken = useAuthStore.getState().accessToken;
+      if (currentUser && accessToken) {
+        const updatedUser = { ...currentUser, ...variables };
+        setAuth(updatedUser, accessToken);
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Cập nhật thất bại");
+    },
+  });
+
+  const register = async (data: RegisterCredentials) => {
+    try {
+      await registerMutation.mutateAsync(data);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const verifyEmail = async (data: VerifyEmailPayload) => {
+    try {
+      await verifyEmailMutation.mutateAsync(data);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const forgotPassword = async (data: ForgotPasswordPayload) => {
+    try {
+      await forgotPasswordMutation.mutateAsync(data);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const resetPassword = async (data: ResetPasswordPayload) => {
+    try {
+      await resetPasswordMutation.mutateAsync(data);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
 
   return {
     login: loginMutation.mutateAsync,
@@ -64,5 +181,15 @@ export const useAuthService = () => {
     googleLogin: googleLoginMutation.mutateAsync,
     isLoggingIn: loginMutation.isPending,
     logout: logoutMutation.mutateAsync,
+    register,
+    isRegistering: registerMutation.isPending,
+    verifyEmail,
+    isVerifying: verifyEmailMutation.isPending,
+    forgotPassword,
+    isSendingForgot: forgotPasswordMutation.isPending,
+    resetPassword,
+    isResetting: resetPasswordMutation.isPending,
+    updateProfile: updateProfileMutation.mutateAsync,
+    isUpdatingProfile: updateProfileMutation.isPending,
   };
 };

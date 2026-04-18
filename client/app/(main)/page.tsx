@@ -33,7 +33,7 @@ export default function ChatPage() {
   const conversations = useConversationStore((s) => s.conversations);
   const activeId = useConversationStore((s) => s.activeId);
   const setActiveId = useConversationStore((s) => s.setActiveId);
-  const socket = useSocketStore(s => s.socket)
+  const socket = useSocketStore((s) => s.socket);
 
   // 2. Lấy các hàm điều khiển từ Hook
   const { startCall, acceptCall, endCall } = useWebRTC();
@@ -88,12 +88,12 @@ export default function ChatPage() {
               <div>
                 <p
                   className="font-bold text-lg mb-1"
-                  style={{ color: "var(--color-ink)" }}
+                  style={{ color: "var(--color-ink-4)", paddingBottom: 10 }}
                 >
-                  Chào mừng đến ZaloChat
+                  Chào mừng đến DaloChat
                 </p>
                 <p className="text-sm" style={{ color: "var(--color-ink-4)" }}>
-                  Chọn một cuộc trò chuyện để bắt đầu nhắn tin
+                  Chọn một cuộc trò chuyện để bắt đầu Chatset
                 </p>
               </div>
             </div>
@@ -103,9 +103,7 @@ export default function ChatPage() {
 
       {/* Overlays */}
       {showCreate && currentUser && (
-        <CreateGroupModal
-          onClose={() => setShowCreate(false)}
-        />
+        <CreateGroupModal onClose={() => setShowCreate(false)} />
       )}
     </div>
   );

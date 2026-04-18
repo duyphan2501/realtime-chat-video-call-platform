@@ -114,6 +114,10 @@ export const useMessageService = () => {
     onError: (error: any, variables: any) => {
       const { tempId } = variables;
       useMessageStore.getState().updateMessageStatus(tempId, "failed");
+      console.group("🔴 LỖI GỬI TIN NHẮN (SEND MESSAGE ERROR)");
+      console.log("Toàn bộ object lỗi:", error);
+      console.log("Thông báo từ Backend:", error?.response?.data?.message);
+      console.groupEnd();
       console.error("Lỗi khi gửi tin nhắn:", error);
     },
   });

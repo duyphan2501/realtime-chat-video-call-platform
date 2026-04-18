@@ -4,7 +4,6 @@ import { UserController } from "../controllers/index.js";
 
 export const userRouter = express.Router();
 
-// All routes require authentication
 userRouter.use(checkAuth);
 
 /* ── Profile ──────────────────────────────────────── */
