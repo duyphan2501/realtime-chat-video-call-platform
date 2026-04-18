@@ -1,5 +1,6 @@
 "use client";
 import type { User } from "@/types";
+import { getAvatar } from "@/utils/user.utils";
 import { UserPlus, UserCheck, Clock } from "lucide-react";
 
 interface SearchResultRowProps {
@@ -21,9 +22,7 @@ export default function SearchResultRow({
   onAddFriend,
   isLoading = false,
 }: SearchResultRowProps) {
-  const avatarUrl =
-    user.avatar ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=e3e8f0&color=0068FF&bold=true&size=48`;
+  const avatarUrl = getAvatar(user)
 
   return (
     <div
@@ -31,7 +30,7 @@ export default function SearchResultRow({
       className={`group flex items-center justify-between p-3 rounded-xl transition-all cursor-pointer ${
         selected
           ? "bg-slate-100 dark:bg-slate-800/50"
-          : "hover:bg-slate-50 dark:hover:bg-white/[0.03]"
+          : "hover:bg-slate-50 dark:hover:bg-white/3"
       }`}
     >
       {/* Left: Avatar + Info */}

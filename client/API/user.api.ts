@@ -26,6 +26,8 @@ export const userAPI = (axiosPrivate: AxiosInstance) => ({
     axiosPrivate.post(`/users/friend-request/${userId}/accept`),
   rejectFriendRequest: (userId: string) =>
     axiosPrivate.delete(`/users/friend-request/${userId}/reject`),
+  cancelFriendRequest: (userId: string) =>
+    axiosPrivate.delete(`/users/friend-request/${userId}/cancel`),
 
   /* ── Unfriend ─────────────────────────── */
   unfriend: (userId: string) =>

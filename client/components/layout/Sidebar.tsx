@@ -27,21 +27,6 @@ const NAV_ITEMS = [
     label: "Danh bạ",
     Icon: Users,
   },
-  {
-    href: "/cloud",
-    label: "Cloud",
-    Icon: Cloud,
-  },
-  {
-    href: "/files",
-    label: "File",
-    Icon: Folder,
-  },
-  {
-    href: "/tasks",
-    label: "Công việc",
-    Icon: CheckSquare,
-  },
 ];
 
 export default function Sidebar() {

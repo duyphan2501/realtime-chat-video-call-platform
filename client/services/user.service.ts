@@ -56,6 +56,13 @@ export const useFriendService = () => {
     },
     [api, loadFriendRequests],
   );
+  const cancelFriendRequest = useCallback(
+    async (userId: string) => {
+      await api.cancelFriendRequest(userId);
+      await loadFriendRequests();
+    },
+    [api, loadFriendRequests],
+  );
 
   const unfriend = useCallback(
     async (userId: string) => {
@@ -90,6 +97,7 @@ export const useFriendService = () => {
     acceptFriendRequest,
     rejectFriendRequest,
     unfriend,
+    cancelFriendRequest,
     searchUsers,
   };
 };
@@ -102,7 +110,7 @@ export const useSearchFriends = (searchTerm: string) => {
     queryFn: () =>
       api.searchOnlyFriends(searchTerm, 10).then((res) => res.data),
     enabled: !!searchTerm,
-    staleTime: 1000 * 60 * 5, 
+    staleTime: 1000 * 60 * 5,
   });
 
   return { data, isLoading };

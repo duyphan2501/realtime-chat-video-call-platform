@@ -28,6 +28,10 @@ userRouter.delete(
   "/friend-request/:userId/reject",
   UserController.rejectFriendRequest,
 );
+userRouter.delete(
+  "/friend-request/:userId/cancel",
+  UserController.cancelFriendRequest,
+);
 
 /* ── Unfriend ─────────────────────────────────────── */
 userRouter.delete("/friends/:userId", UserController.unfriend);

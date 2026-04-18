@@ -74,7 +74,7 @@ export default function ContactsPage() {
               Contacts
             </h2>
             <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-300">
               {friends.length} friends
             </p>
           </div>

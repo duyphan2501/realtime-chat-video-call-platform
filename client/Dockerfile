@@ -26,9 +26,9 @@ ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ARG NEXT_PUBLIC_SOCKET_URL
 
-ENV NEXT_PUBLIC_API_URL=http://localhost:5173/api
-ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=74543867310-ikn1lc201o63aoatea9lctupriorn02s.apps.googleusercontent.com
-ENV NEXT_PUBLIC_SOCKET_URL=http://localhost:5173
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ENV NEXT_PUBLIC_SOCKET_URL=$NEXT_PUBLIC_SOCKET_URL
 
 RUN npm run build
 
@@ -45,7 +45,7 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Chỉ copy những file cần thiết sau khi build (Output Standalone)
-# COPY --from=builder /app/public ./public
+COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 

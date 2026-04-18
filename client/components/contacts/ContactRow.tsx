@@ -30,7 +30,7 @@ export default function ContactRow({
       className={`group flex items-center justify-between p-3 rounded-xl transition-all cursor-pointer ${
         selected
           ? "bg-slate-100 dark:bg-slate-800/50"
-          : "hover:bg-slate-50 dark:hover:bg-white/[0.03]"
+          : "hover:bg-slate-50 dark:hover:bg-white/3"
       } ${!online ? "grayscale opacity-60" : ""}`}
       onClick={onClick}
     >
@@ -57,12 +57,12 @@ export default function ContactRow({
               {user.name}
             </span>
             {user.email && (
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-slate-300">
                 @{user.email.split("@")[0]}
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-300">
             {online ? "Active now" : "Offline"}
           </p>
         </div>
@@ -75,7 +75,7 @@ export default function ContactRow({
             e.stopPropagation();
             onStartChat(user._id);
           }}
-          className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors"
+          className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-300 hover:text-primary transition-colors"
           title="Chat"
         >
           <MessageSquare className="w-4 h-4" />
@@ -85,32 +85,11 @@ export default function ContactRow({
             e.stopPropagation();
             // TODO: Implement call
           }}
-          className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors"
+          className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-300 hover:text-primary transition-colors"
           title="Call"
         >
           <Phone className="w-4 h-4" />
         </button>
-        <div className="relative">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowMenu(!showMenu);
-            }}
-            className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
-          {showMenu && (
-            <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-10">
-              <button className="w-full px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">
-                View Profile
-              </button>
-              <button className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-slate-100 dark:hover:bg-slate-700">
-                Block User
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

@@ -44,6 +44,7 @@ export default function ContactList({
     acceptFriendRequest,
     rejectFriendRequest,
     searchUsers,
+    cancelFriendRequest,
   } = useFriendService();
 
   // Separate online and offline friends
@@ -115,6 +116,14 @@ export default function ContactList({
     }
   };
 
+  const handleCancel = async (user: User) => {
+    try {
+      await cancelFriendRequest(user._id);
+    } catch {
+      toast.error("Failed to reject request");
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#f6f6f8] dark:bg-[#0b0b18]">
       {/* ── Search Bar ─────────────────────────────── */}
@@ -132,7 +141,7 @@ export default function ContactList({
       <div className="flex gap-6 px-8 border-b border-slate-200 dark:border-slate-800">
         <button
           onClick={() => setTab("all")}
-          className={`text-sm font-medium pb-4 pt-1 -mb-[2px] transition-colors border-b-2 ${
+          className={`text-sm font-medium pb-4 pt-1 -mb-0.5 transition-colors border-b-2 ${
             tab === "all"
               ? "text-primary border-primary"
               : "text-slate-500 hover:text-slate-900 dark:hover:text-white border-transparent"
@@ -143,7 +152,7 @@ export default function ContactList({
         </button>
         <button
           onClick={() => setTab("online")}
-          className={`text-sm font-medium pb-4 pt-1 -mb-[2px] transition-colors border-b-2 ${
+          className={`text-sm font-medium pb-4 pt-1 -mb-0.5 transition-colors border-b-2 ${
             tab === "online"
               ? "text-primary border-primary"
               : "text-slate-500 hover:text-slate-900 dark:hover:text-white border-transparent"
@@ -154,7 +163,7 @@ export default function ContactList({
         </button>
         <button
           onClick={() => setTab("pending")}
-          className={`text-sm font-medium pb-4 pt-1 -mb-[2px] transition-colors border-b-2 ${
+          className={`text-sm font-medium pb-4 pt-1 -mb-0.5 transition-colors border-b-2 ${
             tab === "pending"
               ? "text-primary border-primary"
               : "text-slate-500 hover:text-slate-900 dark:hover:text-white border-transparent"
@@ -167,16 +176,7 @@ export default function ContactList({
             </span>
           )}
         </button>
-        <button
-          onClick={() => setTab("blocked")}
-          className={`text-sm font-medium pb-4 pt-1 -mb-[2px] transition-colors border-b-2 ${
-            tab === "blocked"
-              ? "text-primary border-primary"
-              : "text-slate-500 hover:text-slate-900 dark:hover:text-white border-transparent"
-          }`}
-        >
-          Blocked
-        </button>
+       
       </div>
 
       {/* ── Content ────────────────────────────── */}
@@ -256,6 +256,7 @@ export default function ContactList({
                       user={user}
                       onAccept={() => handleAccept(user)}
                       onReject={() => handleReject(user)}
+                      onCancel={() => handleCancel(user)}
                       onClick={() => onSelect(user)}
                     />
                   ))}

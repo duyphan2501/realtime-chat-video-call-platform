@@ -26,7 +26,7 @@ export default function ContactDetail({
   return (
     <aside className="hidden xl:flex w-80 flex-col border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-[#101022] overflow-y-auto">
       {/* ── Cover + Avatar ── */}
-      <div className="h-40 w-full bg-gradient-to-br from-primary to-indigo-900 relative">
+      <div className="h-40 w-full bg-linear-to-br from-primary to-indigo-900 relative">
         <div className="absolute -bottom-10 left-6">
           <div className="h-24 w-24 rounded-2xl border-4 border-white dark:border-[#101022] bg-cover bg-center shadow-lg overflow-hidden">
             <img
@@ -81,7 +81,7 @@ export default function ContactDetail({
             <div className="space-y-2">
               {contact.email && (
                 <div className="flex items-center gap-2">
-                  <p className="text-xs text-slate-500 w-16">Email:</p>
+                  <p className="text-xs text-slate-500 w-10">Email:</p>
                   <p className="text-sm text-slate-700 dark:text-slate-300 truncate">
                     {contact.email}
                   </p>
@@ -89,7 +89,7 @@ export default function ContactDetail({
               )}
               {contact.phone && (
                 <div className="flex items-center gap-2">
-                  <p className="text-xs text-slate-500 w-16">Phone:</p>
+                  <p className="text-xs text-slate-500 w-10">Phone:</p>
                   <p className="text-sm text-slate-700 dark:text-slate-300">
                     {contact.phone}
                   </p>
@@ -142,7 +142,7 @@ export default function ContactDetail({
         {!isFriend && (
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
             <button className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-blue-600 transition-colors">
-              <UserMinus className="w-4 h-4 rotate-[-90deg]" />
+              <UserMinus className="w-4 h-4 -rotate-90" />
               Add Friend
             </button>
           </div>

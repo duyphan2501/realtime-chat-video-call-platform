@@ -142,27 +142,36 @@ export const getFriendRequests = async (req, res, next) => {
     const userId = req.user.userId;
 
     const requests = await FriendshipModel.find({
-      recipient: userId,
+      $or: [{ recipient: userId }, { requester: userId }],
       status: "pending",
-    }).populate("requester", "-password");
+    })
+      .populate("recipient", "-password")
+      .populate("requester", "-password");
 
-    const friendRequests = requests
-      .map((req) => {
-        if (!req.requester) return null;
-        const userObj = filterFieldUser(req.requester);
-        return { ...userObj, friendStatus: "received" };
-      })
-      .filter(Boolean);
+    const friendRequests = requests.map((item) => {
+      // Nếu mình là recipient -> Đây là yêu cầu người khác gửi cho mình (Received)
+      if (item.recipient._id.toString() === userId) {
+        return {
+          ...filterFieldUser(item.requester),
+          friendStatus: "received",
+          requestId: item._id
+        };
+      } 
+      // Nếu mình là requester -> Đây là yêu cầu mình gửi đi (Sent)
+      else {
+        return {
+          ...filterFieldUser(item.recipient),
+          friendStatus: "sent",
+          requestId: item._id
+        };
+      }
+    }).filter(Boolean);
 
-    res.status(200).json({
-      success: true,
-      friendRequests,
-    });
+    res.status(200).json({ success: true, friendRequests });
   } catch (error) {
     next(error);
   }
 };
-
 /* ═══════════════════════════════════════════════════════════
    POST /users/friend-request/:userId
    ═══════════════════════════════════════════════════════════ */
@@ -256,6 +265,28 @@ export const rejectFriendRequest = async (req, res, next) => {
   }
 };
 
+const cancelFriendRequest = async(req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const { userId: recipientId } = req.params;
+
+    if (!recipientId)
+      throw createHttpError.BadRequest("Sender user ID is required");
+
+    const deleted = await FriendshipModel.findOneAndDelete({
+      requester: userId,
+      recipient: recipientId,
+      status: "pending",
+    });
+
+    if (!deleted) throw createHttpError.NotFound("Friend request not found");
+
+    res.status(200).json({ success: true, message: "Friend request cancled" });
+  } catch (error) {
+    next(error)
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════
    DELETE /users/friends/:userId — unfriend
    ═══════════════════════════════════════════════════════════ */
@@ -312,4 +343,5 @@ export const UserController = {
   rejectFriendRequest,
   unfriend,
   searchOnlyFriends,
+  cancelFriendRequest
 };
