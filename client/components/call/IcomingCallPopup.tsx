@@ -22,9 +22,9 @@ export default function IncomingCallPopup() {
   const { status, setStatus, incoming } = useCallStore.getState();
   const { acceptCall, endCall } = useWebRTC();
   const socket = useSocketStore((s) => s.socket);
-  const activeId = useConversationStore((s) => s.activeId);
   const { rejectCall } = useCallService();
-
+  const conversationId = useCallStore(s => s.conversationId)
+  const setActiveId = useConversationStore(s => s.setActiveId)
   // Local state: track permission-requesting phase
   const [isAccepting, setIsAccepting] = useState(false);
   const [permissionError, setPermissionError] = useState<string | null>(null);
@@ -296,7 +296,7 @@ export default function IncomingCallPopup() {
                 </p>
               </div>
               <button
-                onClick={() => {}}
+                onClick={() => setActiveId(conversationId)}
                 disabled={status !== "ringing" || isAccepting}
                 className="flex items-center gap-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-semibold py-2 px-3 rounded-[10px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >

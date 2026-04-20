@@ -21,6 +21,7 @@ export default function AuthProvider({
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.accessToken);
   const { connect, disconnect } = useSocketMain();
+  const setSesstionExpired = useAuthStore((s) => s.setSessionExpired);
 
   // List of routes that don't need auth check
   const isAuthRoute = pathname?.startsWith("/auth");
@@ -32,6 +33,7 @@ export default function AuthProvider({
         await getMe();
       } catch (error) {
         console.error("Auth init failed", error);
+        setSesstionExpired(true);
       } finally {
         setIsLoading(false);
       }

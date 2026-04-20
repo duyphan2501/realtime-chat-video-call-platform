@@ -44,12 +44,12 @@ export const ConversationService = {
       lastMessage: c.lastMessage?.deletedForEveryone ? null : c.lastMessage,
       avatar: c.avatar?.url || undefined,
       unreadCount:
-        c.participants.find((p) => p.user._id.toString() === userId)
+        c.participants.find((p) => p.user?._id.toString() === userId)
           ?.unreadCount || 0,
       otherUser:
         c.type === "direct"
           ? (c.participants.find(
-              (p) => p.user._id.toString() !== userId.toString(),
+              (p) => p.user?._id.toString() !== userId.toString(),
             )?.user ?? null)
           : null,
     }));
@@ -357,6 +357,7 @@ export const ConversationService = {
 
     io.to(`user_${memberToRemoveId}`).emit("group:removedFromGroup", {
       conversationId,
+      friendId: userId,
     });
 
     return updatedConversation;
@@ -522,10 +523,12 @@ export const ConversationService = {
       userId,
       conversation: updatedConversation,
       systemMessage: systemMsg,
+      friendId: userId,
     });
 
     io.to(`user_${userId}`).emit("group:leftGroup", {
       conversationId,
+      friendId: userId,
     });
 
     return updatedConversation;

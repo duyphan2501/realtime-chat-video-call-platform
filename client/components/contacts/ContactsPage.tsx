@@ -30,7 +30,7 @@ export default function ContactsPage() {
       try {
         const api = conversationAPI(axiosPrivate);
         const res = await api.createConversation({
-          participantIds: [userId],
+          participantIds: [userId, currentUser!._id],
           type: "direct",
         });
         const convId = res.data?.conversation?._id ?? res.data?._id;

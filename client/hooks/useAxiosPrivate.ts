@@ -69,7 +69,7 @@ const useAxiosPrivate = () => {
 
             processQueue(null, newToken);
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
-
+            setSessionExpired(false);
             return axiosPrivate(originalRequest);
           } catch (refreshError) {
             processQueue(refreshError, null);

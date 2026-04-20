@@ -52,6 +52,7 @@ export const useAuthService = () => {
   const handleAuthSuccess = (data: any) => {
     setAuth(data.user, data.accessToken);
     queryClient.clear();
+    setSessionExpired(false);
     toast.success("Welcome back!");
     router.push("/");
   };
@@ -76,7 +77,16 @@ export const useAuthService = () => {
 
   const getMeMutation = useMutation({
     mutationFn: () => api.auth.getMe(),
-    onSuccess: (res) => setAuth(res.data.user, res.data.accessToken),
+    onSuccess: (res) => {
+      const user = res.data.user;
+      if (!user) {
+        clearAuth();
+        queryClient.clear();
+        router.push("/auth");
+        return;
+      }
+      setAuth(res.data.user, res.data.accessToken)
+    },
     onError: () => {
       clearAuth();
       queryClient.clear();

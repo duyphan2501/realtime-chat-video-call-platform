@@ -1,6 +1,6 @@
 const getAvatar = (user: { name: string; avatar?: string }) => {
-  if (user.avatar) return user.avatar;
-  if (!user.name)
+  if (user?.avatar) return user.avatar;
+  if (!user?.name)
     return "https://ui-avatars.com/api/?name=User&background=ccc&color=fff&bold=true";
   const colors = [
     "6366f1", // Light Indigo
