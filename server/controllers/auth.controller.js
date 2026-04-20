@@ -4,7 +4,10 @@ import { filterFieldUser } from "../utils/filter.util.js";
 import { generateAccessTokenAndSetCookies } from "../helpers/auth.helper.js";
 import bcrypt from "bcrypt";
 import { UserModel } from "../models/user.model.js";
-import { sendVerificationEmail, sendForgotPasswordEmail } from "../utils/mailer.util.js";
+import {
+  sendVerificationEmail,
+  sendForgotPasswordEmail,
+} from "../utils/mailer.util.js";
 
 const login = async (req, res, next) => {
   try {
@@ -129,7 +132,9 @@ const register = async (req, res, next) => {
     let user = await UserModel.findOne({ email });
 
     // Tạo mã OTP 6 số
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationCode = Math.floor(
+      100000 + Math.random() * 900000,
+    ).toString();
     const verificationTokenExpireAt = new Date(Date.now() + 10 * 60 * 1000); // 10 phút
 
     if (user) {
@@ -155,7 +160,9 @@ const register = async (req, res, next) => {
     }
 
     await sendVerificationEmail(email, verificationCode);
-    res.status(200).json({ message: "Mã xác nhận đã được gửi đến email của bạn." });
+    res
+      .status(200)
+      .json({ message: "Mã xác nhận đã được gửi đến email của bạn." });
   } catch (error) {
     next(error);
   }
@@ -167,7 +174,9 @@ const verifyEmail = async (req, res, next) => {
     const code = req.body.code?.trim();
 
     if (!email || !code) {
-      throw createHttpError.BadRequest("Vui lòng cung cấp email và mã xác thực.");
+      throw createHttpError.BadRequest(
+        "Vui lòng cung cấp email và mã xác thực.",
+      );
     }
 
     const user = await UserModel.findOne({ email });
@@ -178,8 +187,13 @@ const verifyEmail = async (req, res, next) => {
     if (user.isVerified) {
       throw createHttpError.BadRequest("Tài khoản đã được xác thực trước đó.");
     }
-    if (user.verificationToken !== code || new Date() > user.verificationTokenExpireAt) {
-      throw createHttpError.BadRequest("Mã xác thực không hợp lệ hoặc đã hết hạn.");
+    if (
+      user.verificationToken !== code ||
+      new Date() > user.verificationTokenExpireAt
+    ) {
+      throw createHttpError.BadRequest(
+        "Mã xác thực không hợp lệ hoặc đã hết hạn.",
+      );
     }
 
     user.isVerified = true;
@@ -187,7 +201,9 @@ const verifyEmail = async (req, res, next) => {
     user.verificationTokenExpireAt = undefined;
     await user.save();
 
-    res.status(200).json({ message: "Xác thực thành công. Bạn có thể đăng nhập." });
+    res
+      .status(200)
+      .json({ message: "Xác thực thành công. Bạn có thể đăng nhập." });
   } catch (error) {
     next(error);
   }
@@ -202,7 +218,9 @@ const forgotPassword = async (req, res, next) => {
     const user = await UserModel.findOne({ email });
 
     if (!user) {
-      throw createHttpError.NotFound("Không tìm thấy người dùng với email này.");
+      throw createHttpError.NotFound(
+        "Không tìm thấy người dùng với email này.",
+      );
     }
 
     // Tạo mã OTP 6 số
@@ -212,7 +230,9 @@ const forgotPassword = async (req, res, next) => {
     await user.save();
 
     await sendForgotPasswordEmail(email, resetCode);
-    res.status(200).json({ message: "Mã xác nhận đã được gửi đến email của bạn." });
+    res
+      .status(200)
+      .json({ message: "Mã xác nhận đã được gửi đến email của bạn." });
   } catch (error) {
     next(error);
   }
@@ -232,8 +252,13 @@ const resetPassword = async (req, res, next) => {
     if (!user) {
       throw createHttpError.NotFound("Người dùng không tồn tại.");
     }
-    if (user.forgotPasswordToken !== code || new Date() > user.forgotPasswordTokenExpireAt) {
-      throw createHttpError.BadRequest("Mã xác thực không hợp lệ hoặc đã hết hạn.");
+    if (
+      user.forgotPasswordToken !== code ||
+      new Date() > user.forgotPasswordTokenExpireAt
+    ) {
+      throw createHttpError.BadRequest(
+        "Mã xác thực không hợp lệ hoặc đã hết hạn.",
+      );
     }
 
     // Đặt lại mật khẩu
@@ -242,7 +267,12 @@ const resetPassword = async (req, res, next) => {
     user.forgotPasswordTokenExpireAt = undefined;
     await user.save();
 
-    res.status(200).json({ message: "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập ngay bây giờ." });
+    res
+      .status(200)
+      .json({
+        message:
+          "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập ngay bây giờ.",
+      });
   } catch (error) {
     next(error);
   }
@@ -251,17 +281,31 @@ const resetPassword = async (req, res, next) => {
 const updateProfile = async (req, res, next) => {
   try {
     const userId = req.user.userId;
-    const { name, bio, phone, gender, dob } = req.body;
+    const { name, bio, phone, gender, dob, avatar } = req.body;
+
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (bio !== undefined) updateData.bio = bio;
+    if (phone !== undefined) updateData.phone = phone;
+    if (gender !== undefined) updateData.gender = gender;
+    if (dob !== undefined) updateData.dob = dob;
+    if (avatar !== undefined) updateData.avatar = avatar;
 
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
-      { $set: { name, bio, phone, gender, dob } },
-      { new: true } // Trả về document mới sau khi cập nhật
+      { $set: updateData },
+      { new: true }, // Trả về document mới sau khi cập nhật
     );
 
-    if (!updatedUser) throw createHttpError.NotFound("Người dùng không tồn tại.");
+    if (!updatedUser)
+      throw createHttpError.NotFound("User not found.");
 
-    return res.status(200).json({ user: filterFieldUser(updatedUser), message: "Cập nhật thành công." });
+    return res
+      .status(200)
+      .json({
+        user: filterFieldUser(updatedUser),
+        message: "Update Profile successfully.",
+      });
   } catch (error) {
     next(error);
   }

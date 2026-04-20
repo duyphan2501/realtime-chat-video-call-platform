@@ -17,12 +17,9 @@
   /* Brand */
   --color-brand: #0068ff;
   --color-brand-hover: #0057d9;
-  --color-brand-light: #ebf3ff;
   --color-brand-muted: #c2d9ff;
 
   /* Surfaces */
-  --color-bg: #f0f2f5;
-  --color-surface: #ffffff;
   --color-s2: #f5f6f8;
   --color-s3: #eceef2;
   --color-s4: #dde0e8;
@@ -201,7 +198,7 @@
   background: var(--color-s2);
 }
 .conv-item.is-active {
-  background: var(--color-brand-light);
+  background: var(--color-surface);
 }
 
 .typing-dot {

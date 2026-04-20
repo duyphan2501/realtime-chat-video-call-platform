@@ -16,6 +16,7 @@ interface ConversationState {
   setConversations: (c: Conversation[]) => void;
   addConversation: (c: Conversation) => void;
   updateConversation: (id: string, d: Partial<Conversation>) => void;
+  removeConversation: (id: string) => void;
   bumpConversation: (msg: Message, newUnreadCount?: number) => void;
   markAsRead: (id: string) => void;
   updateSeen: (cid: string, userId: string, lastRead?: Date) => void;
@@ -58,6 +59,13 @@ export const useConversationStore = create<ConversationState>((set) => ({
       return { conversations: newMap };
     }),
 
+  removeConversation: (id) =>
+    set((s) => {
+      const newMap = new Map(s.conversations);
+      newMap.delete(id);
+      return { conversations: newMap };
+    }),
+
   bumpConversation: (msg, newUnreadCount) =>
     set((s) => {
       const cid =
@@ -79,7 +87,7 @@ export const useConversationStore = create<ConversationState>((set) => ({
           type: msg.type,
           attachments: msg.attachments,
           createdAt: msg.createdAt,
-          callData: msg.callData
+          callData: msg.callData,
         },
         unreadCount:
           newUnreadCount !== undefined

@@ -50,11 +50,11 @@ const ForgotPasswordForm = ({ onBack }: Props) => {
   ) => {
     e.preventDefault();
     if (code.length !== 6) {
-      toast.error("Vui lòng nhập đủ 6 số.");
+      toast.error("Please enter all 6 digits.");
       return;
     }
-    // Giả lập trạng thái loading để người dùng biết hệ thống đang xử lý
-    // Thực tế việc check sẽ nằm trong hàm resetPassword
+    // Simulate loading state so user knows system is processing
+    // Actually, the check will be in the resetPassword function
     setStep("password");
   };
 

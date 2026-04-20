@@ -112,7 +112,7 @@ export default function ContactList({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f6f6f8] dark:bg-[#0b0b18]">
+    <div className="flex flex-col h-full  bg-[#0b0b18]">
       {/* ── Search Bar ─────────────────────────────── */}
       <div className="px-8 py-4 shrink-0">
         <SearchBar
@@ -127,13 +127,13 @@ export default function ContactList({
       </div>
 
       {/* ── Tabs ─────────────────────────────────── */}
-      <div className="flex gap-6 px-8 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex gap-6 px-8 border-b  border-slate-800">
         <button
           onClick={() => setTab("all")}
           className={`text-sm font-medium pb-4 pt-1 -mb-0.5 transition-colors border-b-2 ${
             tab === "all"
               ? "text-primary border-primary"
-              : "text-slate-500 hover:text-slate-900 dark:hover:text-white border-transparent"
+              : "text-slate-500  hover:text-white border-transparent"
           }`}
         >
           All Friends
@@ -144,7 +144,7 @@ export default function ContactList({
           className={`text-sm font-medium pb-4 pt-1 -mb-0.5 transition-colors border-b-2 ${
             tab === "online"
               ? "text-primary border-primary"
-              : "text-slate-500 hover:text-slate-900 dark:hover:text-white border-transparent"
+              : "text-slate-500  hover:text-white border-transparent"
           }`}
         >
           Online
@@ -157,7 +157,7 @@ export default function ContactList({
           className={`text-sm font-medium pb-4 pt-1 -mb-0.5 transition-colors border-b-2 ${
             tab === "pending"
               ? "text-primary border-primary"
-              : "text-slate-500 hover:text-slate-900 dark:hover:text-white border-transparent"
+              : "text-slate-500 hover:text-white border-transparent"
           }`}
         >
           Pending

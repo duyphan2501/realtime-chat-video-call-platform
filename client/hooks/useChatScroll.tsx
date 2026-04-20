@@ -35,28 +35,28 @@ export function useChatScroll(deps: any[]) {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
-  // 2. MutationObserver tối ưu
+  // 2. Optimized MutationObserver
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
     const observer = new MutationObserver(() => {
       if (isStickyRef.current && !disableAutoScrollRef.current) {
-        // Dùng "auto" khi có mutation để bám sát nội dung đang nở ra
-        scrollToBottom("auto"); 
+        // Use "auto" on mutation to stick closely to expanding content
+        scrollToBottom("auto");
       }
     });
 
-    observer.observe(el, { 
-      childList: true, 
-      subtree: true, 
-      characterData: true // Quan trọng cho tin nhắn dạng streaming/typing
+    observer.observe(el, {
+      childList: true,
+      subtree: true,
+      characterData: true, // Important for streaming/typing messages
     });
 
     return () => observer.disconnect();
   }, [scrollToBottom]);
 
-  // 3. Xử lý khi deps thay đổi (Tin nhắn mới được thêm vào array)
+  // 3. Handle when deps change (New messages added to array)
   useEffect(() => {
     if (firstRenderRef.current) {
       scrollToBottom("auto");
@@ -65,10 +65,10 @@ export function useChatScroll(deps: any[]) {
     }
 
     if (isStickyRef.current && !disableAutoScrollRef.current) {
-      // Với tin nhắn dài, "smooth" đôi khi bị ngắt quãng, "auto" sẽ tin cậy hơn
+      // With long messages, "smooth" sometimes gets interrupted, "auto" is more reliable
       scrollToBottom("auto");
     }
-  }, [deps, scrollToBottom]); // Thêm scrollToBottom vào deps
+  }, [deps, scrollToBottom]); // Add scrollToBottom to deps
 
   return {
     containerRef,

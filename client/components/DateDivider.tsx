@@ -5,9 +5,9 @@ export default function DateDivider({ iso }: { iso: string }) {
   const isYesterday =
     d.toDateString() === new Date(now.getTime() - 86400000).toDateString();
   const label = isToday
-    ? "Hôm nay"
+    ? "Today"
     : isYesterday
-      ? "Hôm qua"
+      ? "Yesterday"
       : d.toLocaleDateString("vi-VN", {
           day: "2-digit",
           month: "2-digit",

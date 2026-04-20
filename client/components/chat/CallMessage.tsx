@@ -5,11 +5,24 @@ import { Phone, Video, PhoneOff, PhoneMissed, RotateCcw } from "lucide-react";
 export default function CallMessage({
   msg,
   isMe,
+  onStartCall,
 }: {
   msg: Message;
   isMe: boolean;
+  onStartCall?: (type: "audio" | "video") => Promise<void>;
 }) {
   const config = getCallConfig(msg, isMe);
+  const callType: "audio" | "video" = msg.type === "video" ? "video" : "audio";
+
+  const handleCallBack = async () => {
+    try {
+      if (onStartCall) {
+        await onStartCall(callType);
+      }
+    } catch (error) {
+      console.error("Failed to initiate call:", error);
+    }
+  };
 
   return (
     <div
@@ -42,8 +55,9 @@ export default function CallMessage({
         {/* Callback Button */}
         {config.showCallback && (
           <button
-            onClick={() => console.log("Redialing...")}
-            className={`mt-2 w-full flex items-center justify-center gap-1 py-1.5 rounded-lg shadow-lg cursor-pointer text-[13px] font-semibold transition-colors ${
+            onClick={handleCallBack}
+            disabled={!onStartCall}
+            className={`mt-2 w-full flex items-center justify-center gap-1 py-1.5 rounded-lg shadow-lg cursor-pointer text-[13px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               isMe
                 ? " hover:bg-gray-300 bg-gray-200 active:bg-gray-100 text-gray-700"
                 : " hover:bg-primary/30 active:bg-primary/40 text-blue-600  bg-primary/10"

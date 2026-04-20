@@ -23,9 +23,10 @@ export default function ConversationList({
   onCreateGroup,
 }: Props) {
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<"all" | "group" | "unread">("all");
+  const [tab, setTab] = useState<"all" | "group">("all");
 
-  const { getConversations, isFetchingConvs, markAsRead } = useConversationService();
+  const { getConversations, isFetchingConvs, markAsRead } =
+    useConversationService();
   const convCursor = useConversationStore((s) => s.convCursor);
   const socket = useSocketStore((s) => s.socket);
   const setActiveId = useConversationStore((s) => s.setActiveId);
@@ -36,14 +37,12 @@ export default function ConversationList({
   };
 
   useEffect(() => {
-    if (tab !== "unread") {
-      getConversations({
-        type: tab,
-        limit: 10,
-        cursor: convCursor?.cursor,
-        lastId: convCursor?.lastId,
-      });
-    }
+    getConversations({
+      type: tab,
+      limit: 10,
+      cursor: convCursor?.cursor,
+      lastId: convCursor?.lastId,
+    });
   }, [tab]);
 
   useEffect(() => {
@@ -70,21 +69,9 @@ export default function ConversationList({
       {/* Header */}
       <div className="px-4 pt-4">
         <div className="flex items-center justify-between mb-3">
-          <span className="font-bold text-base text-white">Tin nhắn</span>
+          <span className="font-bold text-base text-white">Messages</span>
           <div className="flex gap-1">
-            {/* TODO: filter / sort options */}
-            <IconBtn title="Lọc" onClick={() => {}}>
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" d="M3 4h18M7 12h10M11 20h2" />
-              </svg>
-            </IconBtn>
-            <IconBtn title="Tạo nhóm" onClick={onCreateGroup}>
+            <IconBtn title="Create Group" onClick={onCreateGroup}>
               +
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v1h8v-1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-1a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v1h-3zM4.75 12.094A5.973 5.973 0 004 15v1H1v-1a3 3 0 013.75-2.906z" />
@@ -98,7 +85,7 @@ export default function ConversationList({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" />
           <input
             type="text"
-            placeholder="Tìm kiếm"
+            placeholder="Search..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-2 rounded-lg text-sm outline-none bg-gray"
@@ -107,7 +94,7 @@ export default function ConversationList({
 
         {/* Tabs */}
         <div className="flex gap-3 mt-3">
-          {(["all", "group", "unread"] as const).map((t) => (
+          {(["all", "group"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}

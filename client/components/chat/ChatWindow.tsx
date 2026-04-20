@@ -231,19 +231,22 @@ export default function ChatWindow({
           <div className="flex items-center gap-1">
             {!isGroup && (
               <>
-                <IconBtn title="Gọi thoại" onClick={() => onStartCall("audio")}>
+                {/* <IconBtn title="Gọi thoại" onClick={() => onStartCall("audio")}>
                   <Phone size={18} />
-                </IconBtn>
-                <IconBtn title="Gọi video" onClick={() => onStartCall("video")}>
+                </IconBtn> */}
+                <IconBtn
+                  title="Video Call"
+                  onClick={() => onStartCall("video")}
+                >
                   <Video />
                 </IconBtn>
               </>
             )}
-            <IconBtn title="Tìm kiếm" onClick={() => {}}>
+            {/* <IconBtn title="Tìm kiếm" onClick={() => {}}>
               <Search size={20} />
-            </IconBtn>
+            </IconBtn> */}
             <IconBtn
-              title="Thông tin"
+              title="Information"
               onClick={() => setRightPanelOpen((v) => !v)}
             >
               <Info size={20} />
@@ -290,6 +293,7 @@ export default function ChatWindow({
                   currentUserId={sender?._id || ""}
                   isLast={isLast}
                   isGroup={isGroup}
+                  onStartCall={onStartCall}
                 />
               </div>
             );

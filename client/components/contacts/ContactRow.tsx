@@ -3,6 +3,7 @@ import type { User } from "@/types";
 import { usePresenceStore } from "@/store";
 import { MessageSquare, Phone, MoreVertical } from "lucide-react";
 import { useState } from "react";
+import { getAvatar } from "@/utils/user.utils";
 
 interface ContactRowProps {
   user: User;
@@ -21,16 +22,12 @@ export default function ContactRow({
   const online = isOnline(user._id);
   const [showMenu, setShowMenu] = useState(false);
 
-  const avatarUrl =
-    user.avatar ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=e3e8f0&color=0068FF&bold=true&size=48`;
+  const avatarUrl =getAvatar(user); 
 
   return (
     <div
       className={`group flex items-center justify-between p-3 rounded-xl transition-all cursor-pointer ${
-        selected
-          ? "bg-slate-100 dark:bg-slate-800/50"
-          : "hover:bg-slate-50 dark:hover:bg-white/3"
+        selected ? "bg-slate-800/50" : "hover:bg-white/3"
       } ${!online ? "grayscale opacity-60" : ""}`}
       onClick={onClick}
     >
@@ -44,7 +41,7 @@ export default function ContactRow({
             className="h-12 w-12 rounded-full object-cover"
           />
           <div
-            className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-[#0b0b18] ${
+            className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-[#0b0b18] ${
               online ? "bg-green-500" : "bg-slate-400"
             }`}
           />
@@ -53,7 +50,7 @@ export default function ContactRow({
         {/* Info */}
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-sm text-slate-900 dark:text-white">
+            <span className="font-semibold text-sm text-white">
               {user.name}
             </span>
             {user.email && (
@@ -75,20 +72,10 @@ export default function ContactRow({
             e.stopPropagation();
             onStartChat(user._id);
           }}
-          className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-300 hover:text-primary transition-colors"
+          className="p-2 rounded-full bg-slate-800 text-slate-300 hover:text-primary transition-colors"
           title="Chat"
         >
           <MessageSquare className="w-4 h-4" />
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            // TODO: Implement call
-          }}
-          className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-300 hover:text-primary transition-colors"
-          title="Call"
-        >
-          <Phone className="w-4 h-4" />
         </button>
       </div>
     </div>

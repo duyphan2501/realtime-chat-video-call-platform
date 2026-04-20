@@ -3,7 +3,7 @@ FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package files để tận dụng Docker cache
+# Copy package files to take advantage of Docker cache
 COPY package.json package-lock.json* yarn.lock* pnpm-lock.yaml* ./
 RUN \
   if [ -f package-lock.json ]; then npm ci; \
@@ -19,7 +19,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Next.js thu thập dữ liệu ẩn danh, có thể tắt đi để bảo mật
+# Next.js collects anonymous data, can be turned off for security
 ENV NEXT_TELEMETRY_DISABLED 1
 
 ARG NEXT_PUBLIC_API_URL
@@ -40,11 +40,11 @@ WORKDIR /app
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
 
-# Tạo user mới để chạy app (bảo mật hơn chạy bằng root)
+# Create new user to run app (more secure than running as root)
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Chỉ copy những file cần thiết sau khi build (Output Standalone)
+# Only copy necessary files after build (Output Standalone)
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
@@ -54,5 +54,5 @@ USER nextjs
 EXPOSE 3000
 ENV PORT 3000
 
-# Chạy server bằng file server.js được tạo ra từ chế độ standalone
+# Run server using server.js file generated from standalone mode
 CMD ["node", "server.js"]

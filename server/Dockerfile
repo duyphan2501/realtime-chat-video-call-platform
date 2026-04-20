@@ -1,50 +1,39 @@
-# Stage 1: Install dependencies
-FROM node:20-alpine AS bds
+# Stage 1: Dependencies (Install once)
+FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
-RUN apk add --no-cache curl
-
 WORKDIR /app
 
-# Copy các file định nghĩa thư viện
 COPY package.json package-lock.json* ./
-
-# Cài đặt tất cả dependencies (bao gồm cả devDependencies để build nếu cần)
+# Cài đặt tất cả để phục vụ việc build (nếu có TS)
 RUN npm ci
 
-# Stage 2: Build (Nếu bạn dùng TypeScript hoặc Babel)
+# Stage 2: Build (Dành cho TS hoặc các bước xử lý code)
 FROM node:20-alpine AS builder
 WORKDIR /app
-COPY --from=bds /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# RUN npm run build # Nếu có bước biên dịch code
 
-# Nếu bạn dùng TypeScript, hãy uncomment dòng dưới đây
-# RUN npm run build 
-
-# Stage 3: Production (Runner)
+# Stage 3: Runner (Sạch và Nhẹ)
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Thiết lập biến môi trường
 ENV NODE_ENV production
 
-# Tạo user node để bảo mật (tránh dùng root)
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 expressjs
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 expressjs
 
-# Chỉ cài đặt các dependencies cần cho runtime (loại bỏ devDependencies)
-COPY package.json package-lock.json* ./
-RUN npm ci --only=production
-
-# Copy mã nguồn từ Stage 2 (Hoặc copy thư mục dist nếu build TS)
+# TỐI ƯU TẠI ĐÂY: Thay vì chạy 'npm ci' lần nữa, ta chỉ copy code và node_modules cần thiết
+# Nếu bạn có bước build, hãy copy thư mục /dist và các file cần chạy
 COPY --from=builder /app ./ 
 
-# Thay đổi quyền sở hữu thư mục app cho user expressjs
-RUN chown -R expressjs:nodejs /app
+# Loại bỏ devDependencies ngay trong layer này để giảm dung lượng image cuối
+RUN npm prune --production
 
+RUN chown -R expressjs:nodejs /app
 USER expressjs
 
 EXPOSE 8000
 ENV PORT 8000
 
-# Lệnh chạy ứng dụng
 CMD ["node", "index.js"]

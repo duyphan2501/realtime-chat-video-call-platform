@@ -88,6 +88,14 @@ export const useFriendService = () => {
     [api],
   );
 
+  const getProfile = useCallback(
+    async (userId: string): Promise<User> => {
+      const res = await api.getProfile(userId);
+      return res.data.user;
+    },
+    [api],
+  );
+
   return {
     isLoadingFriends,
     isSearching,
@@ -99,6 +107,7 @@ export const useFriendService = () => {
     unfriend,
     cancelFriendRequest,
     searchUsers,
+    getProfile,
   };
 };
 

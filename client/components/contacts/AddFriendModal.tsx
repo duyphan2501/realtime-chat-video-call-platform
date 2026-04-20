@@ -6,6 +6,7 @@ import { useFriendService } from "@/services";
 import { useFriendStore } from "@/store";
 import toast from "react-hot-toast";
 import { getAvatar } from "@/utils/user.utils";
+import SearchBar from "./SearchBar";
 
 interface AddFriendModalProps {
   isOpen: boolean;
@@ -26,7 +27,7 @@ export default function AddFriendModal({
     useFriendService();
   const friends = useFriendStore((s) => s.friends);
   const friendRequests = useFriendStore((s) => s.friendRequests);
-  const addFriendRequest = useFriendStore(s => s.addFriendRequest)
+  const addFriendRequest = useFriendStore((s) => s.addFriendRequest);
 
   // Search debounce
   useEffect(() => {
@@ -57,7 +58,7 @@ export default function AddFriendModal({
     try {
       await sendFriendRequest(user._id);
       toast.success(`Sent friend request to ${user.name}`);
-      addFriendRequest({...user, friendStatus: "sent"})
+      addFriendRequest({ ...user, friendStatus: "sent" });
       // setResults((prev) => prev.filter((u) => u._id !== user._id));
     } catch {
       toast.error("Failed to send request");
@@ -95,20 +96,18 @@ export default function AddFriendModal({
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md mx-4 bg-white dark:bg-[#101022] rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-md mx-4 bg-[#101022] rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between p-4 border-b border-slate-800">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
               <UserPlus className="w-5 h-5 text-primary" />
             </div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              Add Friend
-            </h2>
+            <h2 className="text-lg font-bold text-white">Add Friend</h2>
           </div>
           <button
             onClick={handleClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5 text-slate-500" />
           </button>
@@ -116,17 +115,7 @@ export default function AddFriendModal({
 
         {/* Search Input */}
         <div className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by email or phone number..."
-              className="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 text-slate-900 dark:text-white"
-              autoFocus
-            />
-          </div>
+          <SearchBar value={query} onChange={setQuery} placeholder="Search friends..." />
         </div>
 
         {/* Results */}
@@ -140,7 +129,7 @@ export default function AddFriendModal({
               {results.map((user) => (
                 <div
                   key={user._id}
-                  className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                  className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-800/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <img
@@ -149,18 +138,18 @@ export default function AddFriendModal({
                       className="w-10 h-10 rounded-full object-cover"
                     />
                     <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                      <p className="text-sm font-semibold text-white">
                         {user.name}
                       </p>
                       <p className="text-xs text-slate-500">{user.email}</p>
                     </div>
                   </div>
                   {user.friendStatus === "sent" ? (
-                    /* Nút Hủy yêu cầu (Dành cho những người đã gửi nhưng đang chờ) */
+                    /* Cancel Request button (For those who have sent but are waiting) */
                     <button
                       onClick={() => handleCancelRequest(user)}
                       disabled={sendingId === user._id}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-100 text-rose-600 hover:bg-rose-200 hover:text-red-700 transition-colors disabled:opacity-50 dark:bg-rose-900/30 dark:text-rose-400"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-900/30 text-rose-400 hover:bg-rose-200 hover:text-red-700 transition-colors disabled:opacity-50"
                     >
                       {sendingId === user._id ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -189,12 +178,10 @@ export default function AddFriendModal({
             </div>
           ) : query.trim() ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3">
+              <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-3">
                 <Search className="w-8 h-8 text-slate-400" />
               </div>
-              <p className="text-sm font-medium text-slate-900 dark:text-white">
-                No users found
-              </p>
+              <p className="text-sm font-medium text-white">No users found</p>
               <p className="text-xs text-slate-500 mt-1">
                 Try searching with a different email or phone
               </p>
@@ -204,7 +191,7 @@ export default function AddFriendModal({
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-3">
                 <UserPlus className="w-8 h-8 text-primary" />
               </div>
-              <p className="text-sm font-medium text-slate-900 dark:text-white">
+              <p className="text-sm font-medium text-white">
                 Find friends by email or phone
               </p>
               <p className="text-xs text-slate-500 mt-1">

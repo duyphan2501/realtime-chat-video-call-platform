@@ -85,7 +85,35 @@ const sendMessage = async ({
   return messageData;
 };
 
+const createSystemMessage = async ({ conversationId, senderId, content }) => {
+  // 1. Create system message
+  const systemMessage = await MessageModel.create({
+    conversation: conversationId,
+    sender: senderId,
+    content,
+    type: "system",
+  });
+
+  // 2. Update conversation's last message (but don't increment unread counts for system messages)
+  await ConversationModel.findByIdAndUpdate(conversationId, {
+    lastMessage: systemMessage._id,
+    lastMessageAt: new Date(),
+  });
+
+  // 3. Populate and return the message
+  const fullMessage = await systemMessage.populate("sender", "_id name avatar");
+
+  // 4. Emit to conversation room
+  io.to(`conversation_${conversationId}`).emit("message:new", {
+    newMessage: fullMessage,
+    unreadCount: 0, // System messages don't count as unread
+  });
+
+  return fullMessage;
+};
+
 export const MessageService = {
   getMessages,
   sendMessage,
+  createSystemMessage,
 };

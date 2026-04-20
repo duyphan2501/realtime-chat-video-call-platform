@@ -9,6 +9,8 @@ export interface User {
   avatar: string;
   phone?: string;
   bio?: string;
+  dob?: Date;
+  gender?: string;
   lastActive?: Date;
   /** "friend" | "sent" | "received" | "none" — backend trả về */
   friendStatus?: "friend" | "sent" | "received" | "none";
@@ -97,7 +99,8 @@ export type CallStatus =
   | "accepted"
   | "ended"
   | "missed"
-  | "rejected";
+  | "rejected"
+  | "busy";
 
 export interface IncomingCall {
   from: { _id: string; name: string; avatar: string };

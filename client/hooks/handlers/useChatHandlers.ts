@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useMessageStore, useConversationStore } from "@/store";
+import { useMessageStore, useConversationStore, useAuthStore } from "@/store";
 import type { Socket } from "socket.io-client";
 
 export function useChatHandlers(socket: Socket | null) {
@@ -13,7 +13,10 @@ export function useChatHandlers(socket: Socket | null) {
         .getState()
         .bumpConversation(data.newMessage, data.unreadCount);
 
-      if (data.newMessage.type === "system") return;
+      const isMe =
+        useAuthStore.getState().user?._id === data.newMessage.sender._id;
+
+      if (data.newMessage.type === "system" || isMe) return;
       socket.emit("message:received", {
         messageId: data.newMessage._id,
         senderId: data.newMessage.sender._id,

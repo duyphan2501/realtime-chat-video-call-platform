@@ -26,7 +26,7 @@ const useAxiosPrivate = () => {
   const refreshToken = useAuthStore((s) => s.handleRefreshToken);
 
   useEffect(() => {
-    // 1. Request Interceptor: Gắn Access Token từ RAM (Zustand)
+    // 1. Request Interceptor: Attach Access Token from RAM (Zustand)
     const requestIntercept = axiosPrivate.interceptors.request.use(
       (config) => {
         const token = useAuthStore.getState().accessToken;
@@ -44,7 +44,7 @@ const useAxiosPrivate = () => {
       async (error) => {
         const originalRequest = error.config as CustomAxiosConfig;
 
-        // CHỈ REFRESH KHI: Lỗi 401 + Chưa retry + User CHỌN "Ghi nhớ" (persist)
+        // ONLY REFRESH WHEN: 401 error + Not yet retried + User CHOSE "Remember" (persist)
         if (
           error.response?.status === 401 &&
           !originalRequest._retry &&

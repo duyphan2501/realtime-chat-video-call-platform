@@ -45,12 +45,12 @@ function getConvAvatar(c: Conversation, me: User | null): string | undefined {
 }
 
 const getCallConfig = (msg: Message, isMe: boolean) => {
-  if (!msg.callData) return {title: "Invalid Call"};
-  const {duration, status} = msg.callData;
+  if (!msg.callData) return { title: "Invalid Call" };
+  const { duration, status } = msg.callData;
   const isVideo = msg.type === "video";
   const typeLabel = isVideo ? "video call" : "voice call";
 
-  // helper để viết hoa chữ cái đầu
+  // helper to capitalize first letter
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
   switch (status) {
@@ -67,8 +67,8 @@ const getCallConfig = (msg: Message, isMe: boolean) => {
     case "missed":
       return {
         icon: <PhoneMissed size={18} className="text-red-500" />,
-        // Nếu là mình gọi: "No answer" (Không ai nhấc máy)
-        // Nếu là người kia gọi: "Missed call" (Cuộc gọi nhỡ)
+        // If it's me calling: "No answer" (No one answered)
+        // If the other person called: "Missed call" (Missed call)
         title: isMe
           ? `No answer from your ${typeLabel}`
           : `Missed ${typeLabel}`,
@@ -79,8 +79,8 @@ const getCallConfig = (msg: Message, isMe: boolean) => {
     case "rejected":
       return {
         icon: <PhoneOff size={18} className="text-gray-500" />,
-        // Nếu là mình gọi: "Call declined" (Người kia từ chối)
-        // Nếu là người kia gọi: "You declined" (Bạn đã từ chối)
+        // If it's me calling: "Call declined" (The other person declined)
+        // If the other person called: "You declined" (You declined)
         title: isMe
           ? `Declined your ${typeLabel}`
           : `You declined the ${typeLabel}`,
@@ -88,7 +88,7 @@ const getCallConfig = (msg: Message, isMe: boolean) => {
         showCallback: true,
       };
 
-    case "no_answer": // Thêm case này nếu server trả về khi timeout
+    case "no_answer": // Add this case if server returns on timeout
       return {
         icon: <PhoneMissed size={18} />,
         title: `Your ${typeLabel} was not answered`,
@@ -113,16 +113,22 @@ function getPreview(c: Conversation, me: User | null): string {
   const lm = c.lastMessage;
   if (!lm) return "No messages yet";
 
-  const isMine = (lm.sender as User)?._id === me?._id;
+  const senderId = typeof lm.sender === "object" ? lm.sender?._id : lm.sender;
+  const isMine = senderId === me?._id;
   const prefix = isMine ? "You: " : "";
   const attachmentsLength = lm.attachments?.length || 0;
   switch (lm.type) {
+    case "system":
+      return lm.content || "System message";
     case "image":
       return `${prefix} Sent ${attachmentsLength > 1 ? attachmentsLength + " photos" : "a photo"}`;
     case "file":
       return `${prefix} Sent ${attachmentsLength > 1 ? attachmentsLength + " files" : "a file"}`;
     case "video":
-      return getCallConfig(c.lastMessage as Message, me?._id === c.lastMessage?.sender._id)?.title;
+      return (
+        getCallConfig(c.lastMessage as Message, me?._id === senderId)?.title ||
+        "Call"
+      );
     default:
       return prefix + (lm.content || "Sent a message");
   }

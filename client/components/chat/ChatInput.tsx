@@ -145,9 +145,6 @@ export default function ChatInput({ convId, onSend, disabled }: Props) {
       <div className="flex items-center gap-2 px-3 py-2 border-gray-800 border-t">
         {/* Toolbar */}
         <div className="flex items-center gap-0.5 shrink-0 pb-1">
-          <IconBtn title="Emoji" onClick={() => {}}>
-            😊
-          </IconBtn>
           <IconBtn title="Hình ảnh" onClick={() => imgRef.current?.click()}>
             <ImageIcon className="w-5 h-5" />
           </IconBtn>
@@ -276,6 +273,20 @@ const AttachIcon = ({ className }: { className: string }) => (
       strokeLinecap="round"
       d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"
     />
+  </svg>
+);
+const SmileIcon = ({ className }: { className: string }) => (
+  <svg
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+  >
+    <circle cx="12" cy="12" r="10" />
+    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+    <line x1="9" y1="9" x2="9.01" y2="9" />
+    <line x1="15" y1="9" x2="15.01" y2="9" />
   </svg>
 );
 const FileIcon = ({

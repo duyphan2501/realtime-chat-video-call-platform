@@ -1,14 +1,11 @@
 import express from "express";
 import { checkAuth } from "../middlewares/auth.middleware.js";
 import { UserController } from "../controllers/index.js";
+import { uploadImg } from "../middlewares/multer.middleware.js";
 
 export const userRouter = express.Router();
 
 userRouter.use(checkAuth);
-
-/* ── Profile ──────────────────────────────────────── */
-userRouter.get("/me", UserController.getMe);
-userRouter.put("/me", UserController.updateMe);
 
 /* ── Search ────────────────────────────────────────── */
 userRouter.get("/search", UserController.searchUsers);
@@ -35,3 +32,13 @@ userRouter.delete(
 
 /* ── Unfriend ─────────────────────────────────────── */
 userRouter.delete("/friends/:userId", UserController.unfriend);
+
+/* ── Profile ──────────────────────────────────────── */
+userRouter.get("/me", UserController.getMe);
+userRouter.put("/me", UserController.updateMe);
+userRouter.post(
+  "/me/avatar",
+  uploadImg.single("files"),
+  UserController.updateAvatar,
+);
+userRouter.get("/:userId", UserController.getProfile);

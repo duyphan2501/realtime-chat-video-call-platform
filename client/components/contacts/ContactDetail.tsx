@@ -1,8 +1,17 @@
 "use client";
+import { useState } from "react";
 import type { User } from "@/types";
 import { usePresenceStore } from "@/store";
-import { MessageSquare, Phone, Video, UserMinus, Calendar, X } from "lucide-react";
+import {
+  MessageSquare,
+  Phone,
+  Video,
+  UserMinus,
+  Calendar,
+  X,
+} from "lucide-react";
 import { getAvatar } from "@/utils/user.utils";
+import ConfirmModal from "../ConfirmModal";
 
 interface ContactDetailProps {
   contact: User;
@@ -19,14 +28,22 @@ export default function ContactDetail({
   onUnfriend,
   onClose,
 }: ContactDetailProps) {
+  const [showUnfriendConfirm, setShowUnfriendConfirm] = useState(false);
   const isOnline = usePresenceStore((s) => s.isOnline);
   const online = isOnline(contact._id);
 
   const avatarUrl = getAvatar(contact);
 
+  const handleUnfriendConfirm = () => {
+    onUnfriend(contact._id);
+    setShowUnfriendConfirm(false);
+  };
+
   return (
-    <aside className="fixed inset-0 z-50 flex flex-col w-full bg-white dark:bg-[#101022] md:overflow-hidden overflow-y-auto 
-      md:relative md:z-0 md:w-80 md:border-l md:border-slate-200 md:dark:border-slate-800">
+    <aside
+      className="fixed inset-0 z-50 flex flex-col w-full  bg-[#101022] md:overflow-hidden overflow-y-auto 
+      md:relative md:z-0 md:w-80 md:border-l  md:border-slate-800"
+    >
       <div className="absolute top-4 right-4 z-10 xl:hidden">
         <button
           onClick={onClose}
@@ -38,7 +55,7 @@ export default function ContactDetail({
       {/* ── Cover + Avatar ── */}
       <div className="h-48 xl:h-40 w-full bg-linear-to-br from-primary to-indigo-900 relative shrink-0">
         <div className="absolute -bottom-10 left-6">
-          <div className="h-24 w-24 rounded-2xl border-4 border-white dark:border-[#101022] bg-cover bg-center shadow-lg overflow-hidden">
+          <div className="h-24 w-24 rounded-2xl border-4  border-[#101022] bg-cover bg-center shadow-lg overflow-hidden">
             <img
               src={avatarUrl}
               alt={contact.name}
@@ -50,9 +67,7 @@ export default function ContactDetail({
 
       {/* ── Profile Info ── */}
       <div className="pt-14 px-6 pb-6">
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-          {contact.name}
-        </h3>
+        <h3 className="text-lg font-bold  text-white">{contact.name}</h3>
         <p className="text-sm text-slate-500 mb-6">
           @
           {contact.email?.split("@")[0] ||
@@ -65,7 +80,7 @@ export default function ContactDetail({
             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
               Status Message
             </h4>
-            <p className="text-sm text-slate-700 dark:text-slate-300">
+            <p className="text-sm  text-slate-300">
               {contact.bio || "No status message"}
             </p>
           </div>
@@ -79,7 +94,7 @@ export default function ContactDetail({
               <div
                 className={`w-2 h-2 rounded-full ${online ? "bg-green-500" : "bg-slate-400"}`}
               />
-              <p className="text-sm text-slate-700 dark:text-slate-300">
+              <p className="text-sm  text-slate-300">
                 {online ? "Online" : "Offline"}
               </p>
             </div>
@@ -94,7 +109,7 @@ export default function ContactDetail({
               {contact.email && (
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-slate-500 w-10">Email:</p>
-                  <p className="text-sm text-slate-700 dark:text-slate-300 truncate">
+                  <p className="text-sm  text-slate-300 truncate">
                     {contact.email}
                   </p>
                 </div>
@@ -102,9 +117,7 @@ export default function ContactDetail({
               {contact.phone && (
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-slate-500 w-10">Phone:</p>
-                  <p className="text-sm text-slate-700 dark:text-slate-300">
-                    {contact.phone}
-                  </p>
+                  <p className="text-sm  text-slate-300">{contact.phone}</p>
                 </div>
               )}
             </div>
@@ -113,7 +126,7 @@ export default function ContactDetail({
 
         {/* ── Action Buttons ── */}
         {isFriend && (
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+          <div className="pt-4 border-t  border-slate-800 space-y-2">
             {/* Chat */}
             <button
               onClick={() => onStartChat(contact._id)}
@@ -127,12 +140,8 @@ export default function ContactDetail({
 
             {/* Unfriend */}
             <button
-              onClick={() => {
-                if (confirm(`Unfriend ${contact.name}?`)) {
-                  onUnfriend(contact._id);
-                }
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 font-medium text-sm hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+              onClick={() => setShowUnfriendConfirm(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 font-medium text-sm  hover:bg-red-500/10 transition-colors"
             >
               <UserMinus className="w-5 h-5" />
               Unfriend
@@ -142,7 +151,7 @@ export default function ContactDetail({
 
         {/* Not friend - Add Friend button */}
         {!isFriend && (
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="pt-4 border-t  border-slate-800">
             <button className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-blue-600 transition-colors">
               <UserMinus className="w-4 h-4 -rotate-90" />
               Add Friend
@@ -150,6 +159,16 @@ export default function ContactDetail({
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={showUnfriendConfirm}
+        title="Unfriend"
+        message={`Unfriend ${contact.name}?`}
+        onConfirm={handleUnfriendConfirm}
+        onCancel={() => setShowUnfriendConfirm(false)}
+        confirmText="Unfriend"
+        cancelText="Cancel"
+      />
     </aside>
   );
 }

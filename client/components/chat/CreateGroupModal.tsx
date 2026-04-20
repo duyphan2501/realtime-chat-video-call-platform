@@ -1,9 +1,11 @@
 "use client";
-import { useState, useRef, useCallback } from "react";
+
+import { useState, useRef } from "react";
 import type { User } from "@/types";
-import { useAuthStore, useConversationStore } from "@/store";
+import { useAuthStore } from "@/store";
 import { useConversationService, useSearchFriends } from "@/services";
 import useDebounce from "@/hooks/useDebounce";
+import { X, Camera, Search, Loader2, Check } from "lucide-react";
 
 interface Props {
   onClose: () => void;
@@ -16,6 +18,7 @@ export default function CreateGroupModal({ onClose }: Props) {
   const [avatar, setAvatar] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const imgRef = useRef<HTMLInputElement>(null);
+  
   const searchTerm = useDebounce(query, 500);
   const { data: friends = [] } = useSearchFriends(searchTerm);
   const { createConversation, isCreatingConv } = useConversationService();
@@ -35,7 +38,9 @@ export default function CreateGroupModal({ onClose }: Props) {
   };
 
   const handleCreate = async () => {
-    const participantIds = selected.map((s) => s._id).concat(useAuthStore.getState().user?._id || "");
+    const participantIds = selected
+      .map((s) => s._id)
+      .concat(useAuthStore.getState().user?._id || "");
     await createConversation({
       type: "group",
       participantIds,
@@ -49,204 +54,152 @@ export default function CreateGroupModal({ onClose }: Props) {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/40 animate-fade-in"
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-        <div
-          className="relative w-full max-w-115 max-h-[85vh] flex flex-col rounded-3xl animate-scale-in pointer-events-auto overflow-hidden"
-          style={{
-            background: "var(--color-surface)",
-            boxShadow: "var(--shadow-lg)",
-          }}
-        >
+      {/* Modal Container */}
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none">
+        <div className="relative w-full max-w-[460px] max-h-[90vh] flex flex-col rounded-[2.5rem] bg-[#181829] border border-white/5 shadow-2xl pointer-events-auto overflow-hidden animate-scale-in">
+          
           {/* Header */}
-          <div
-            className="flex items-center justify-between px-6 py-4 shrink-0"
-            style={{ borderBottom: "1px solid var(--color-s3)" }}
-          >
-            <h3 className="font-bold text-base">Create New Group</h3>
+          <div className="flex items-center justify-between px-8 py-6 border-b border-white/10 bg-[#12121e] shrink-0">
+            <h3 className="font-bold text-xl text-white">Create Group</h3>
             <button
               onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-xl cursor-pointer hover:text-600 transition-colors"
-              style={{ color: "var(--color-ink-3)" }}
+              className="p-2 rounded-xl bg-white/5 text-slate-400 hover:text-white transition-all"
             >
-              <CloseIcon className="w-4 h-4" />
+              <X size={20} />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-5">
-            {/* Avatar + Name */}
-            <div className="flex items-center gap-4">
+          <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+            {/* Avatar + Group Name Input */}
+            <div className="flex items-center gap-5">
               <button
                 onClick={() => imgRef.current?.click()}
-                className="w-16 h-16 rounded-full flex items-center justify-center shrink-0 overflow-hidden border-2 border-dashed transition-colors"
-                style={{
-                  background: "var(--color-s2)",
-                  borderColor: "var(--color-s4)",
-                }}
+                className="group relative w-20 h-20 rounded-[2rem] bg-[#1c1c2e] border-2 border-dashed border-white/10 flex items-center justify-center shrink-0 overflow-hidden hover:border-[#2b2bee]/50 transition-all"
               >
                 {preview ? (
-                  <img
-                    src={preview}
-                    className="w-full h-full object-cover"
-                    alt=""
-                  />
+                  <img src={preview} className="w-full h-full object-cover" alt="" />
                 ) : (
-                  <CamIcon
-                    className="w-6 h-6"
-                    style={{ color: "var(--color-ink-4)" }}
-                  />
+                  <Camera className="text-slate-500 group-hover:text-[#2b2bee] transition-colors" size={24} />
                 )}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <span className="text-[10px] text-white font-bold uppercase tracking-tighter">Edit</span>
+                </div>
               </button>
-              <div className="flex-1">
+
+              <div className="flex-1 space-y-1">
                 <input
                   type="text"
                   placeholder="Group name..."
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   maxLength={50}
-                  className="w-full px-4 py-3 rounded-2xl text-sm outline-none"
-                  style={{
-                    background: "var(--color-s2)",
-                    color: "var(--color-ink)",
-                  }}
+                  className="w-full bg-[#1c1c2e] text-white px-5 py-4 rounded-2xl outline-none border border-transparent focus:border-[#2b2bee]/50 transition-all text-sm font-medium"
                 />
-                <p
-                  className="text-[11px] text-right mt-1"
-                  style={{ color: "var(--color-ink-4)" }}
-                >
+                <p className="text-[10px] text-slate-500 text-right font-bold pr-1">
                   {name.length}/50
                 </p>
               </div>
-              <input
-                ref={imgRef}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={pickAvatar}
-              />
+              <input ref={imgRef} type="file" accept="image/*" hidden onChange={pickAvatar} />
             </div>
 
-            {/* Selected chips */}
+            {/* Selected Chips Section */}
             {selected.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {selected.map((u) => (
-                  <div
-                    key={u._id}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm"
-                    style={{
-                      background: "var(--color-brand-light)",
-                      color: "var(--color-brand)",
-                    }}
-                  >
-                    <img
-                      src={
-                        u.avatar ||
-                        `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=e3e8f0&color=0068FF&bold=true&size=32`
-                      }
-                      alt={u.name}
-                      className="w-5 h-5 rounded-full object-cover"
-                    />
-                    <span className="font-medium">{u.name}</span>
-                    <button
-                      onClick={() => toggle(u)}
-                      className="opacity-60 hover:opacity-100"
+              <div className="space-y-3">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Participants ({selected.length})</p>
+                <div className="flex flex-wrap gap-2">
+                  {selected.map((u) => (
+                    <div
+                      key={u._id}
+                      className="flex items-center gap-2 pl-1 pr-3 py-1 bg-[#2b2bee]/10 border border-[#2b2bee]/20 rounded-xl animate-scale-in"
                     >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                      <img
+                        src={u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=2b2bee&color=fff&bold=true`}
+                        className="w-6 h-6 rounded-lg object-cover"
+                        alt=""
+                      />
+                      <span className="text-xs font-bold text-[#2b2bee]">{u.name.split(' ')[0]}</span>
+                      <button onClick={() => toggle(u)} className="text-[#2b2bee] hover:text-white transition-colors">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
-            {/* Search + list */}
-            <div>
-              <div className="relative mb-3">
-                <SearchIcon
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-                  style={{ color: "var(--color-ink-4)" }}
-                />
+            {/* Search Friends List */}
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                 <input
                   type="text"
-                  placeholder="Search friends..."
+                  placeholder="Invite friends..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-2xl text-sm outline-none"
-                  style={{ background: "var(--color-s2)" }}
+                  className="w-full bg-[#1c1c2e] text-white pl-12 pr-5 py-4 rounded-2xl outline-none border border-transparent focus:border-[#2b2bee]/50 transition-all text-sm"
                 />
               </div>
-              <div className="space-y-1 max-h-50 overflow-y-auto">
+
+              <div className="space-y-1 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                 {friends.map((f: User) => {
-                  const checked = !!selected.find((s) => s._id === f._id);
+                  const isChecked = selected.some((s) => s._id === f._id);
                   return (
-                    <label
+                    <div
                       key={f._id}
-                      className="flex items-center gap-3 p-2 rounded-2xl cursor-pointer transition-colors"
-                      onMouseEnter={(e) =>
-                        ((e.currentTarget as HTMLElement).style.background =
-                          "var(--color-s2)")
-                      }
-                      onMouseLeave={(e) =>
-                        ((e.currentTarget as HTMLElement).style.background =
-                          "transparent")
-                      }
+                      onClick={() => toggle(f)}
+                      className={`flex items-center justify-between p-3 rounded-2xl cursor-pointer transition-all border ${
+                        isChecked 
+                          ? "bg-[#2b2bee]/5 border-[#2b2bee]/20" 
+                          : "hover:bg-white/5 border-transparent"
+                      }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggle(f)}
-                        className="w-4 h-4 rounded accent-[#0068FF]"
-                      />
-                      <img
-                        src={
-                          f.avatar ||
-                          `https://ui-avatars.com/api/?name=${encodeURIComponent(f.name)}&background=e3e8f0&color=0068FF&bold=true&size=32`
-                        }
-                        className="w-8 h-8 rounded-full object-cover"
-                        alt={f.name}
-                      />
-                      <span className="text-sm font-medium">{f.name}</span>
-                    </label>
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={f.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(f.name)}&background=1c1c2e&color=64748b&bold=true`}
+                          className="w-10 h-10 rounded-xl object-cover"
+                          alt=""
+                        />
+                        <span className="text-sm font-bold text-slate-200">{f.name}</span>
+                      </div>
+                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center border-2 transition-all ${
+                        isChecked 
+                          ? "bg-[#2b2bee] border-[#2b2bee] text-white" 
+                          : "border-white/10"
+                      }`}>
+                        {isChecked && <Check size={14} strokeWidth={3} />}
+                      </div>
+                    </div>
                   );
                 })}
+
                 {friends.length === 0 && (
-                  <p
-                    className="text-xs text-center py-4"
-                    style={{ color: "var(--color-ink-4)" }}
-                  >
-                    Not found any friend
-                  </p>
+                  <div className="text-center py-10 opacity-40">
+                    <p className="text-sm font-bold text-slate-400">No friends found</p>
+                  </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Footer */}
-          <div
-            className="flex gap-3 px-6 py-4 shrink-0"
-            style={{ borderTop: "1px solid var(--color-s3)" }}
-          >
+          {/* Footer Actions */}
+          <div className="flex gap-4 px-8 py-6 bg-[#12121e] border-t border-white/10 shrink-0">
             <button
               onClick={onClose}
-              className="flex-1 py-3 rounded-2xl text-sm font-medium transition-colors cursor-pointer hover:bg-gray-200!"
-              style={{
-                background: "var(--color-s2)",
-                color: "var(--color-ink-2)",
-              }}
+              className="flex-1 py-4 rounded-2xl bg-[#282839] text-slate-300 font-bold hover:bg-[#323245] transition-all"
             >
-              Cancle
+              Cancel
             </button>
             <button
               onClick={handleCreate}
               disabled={!name.trim() || selected.length < 1 || isCreatingConv}
-              className="flex-1 py-3 rounded-2xl text-sm font-semibold text-white transition-all active:scale-[.98] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer hover:bg-blue-700!"
-              style={{ background: "var(--color-brand)" }}
+              className="flex-1 py-4 rounded-2xl bg-[#2b2bee] text-white font-bold transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98]"
             >
-              {isCreatingConv && <SpinIcon className="w-4 h-4 animate-spin" />}
-              Create Group ({selected.length})
+              {isCreatingConv ? <Loader2 size={18} className="animate-spin" /> : null}
+              Create Group
             </button>
           </div>
         </div>
@@ -254,74 +207,3 @@ export default function CreateGroupModal({ onClose }: Props) {
     </>
   );
 }
-
-/* ── Icons ───────────────────────────────────────── */
-const CloseIcon = ({ className }: { className: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    viewBox="0 0 24 24"
-  >
-    <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
-  </svg>
-);
-const CamIcon = ({
-  className,
-  style,
-}: {
-  className: string;
-  style?: React.CSSProperties;
-}) => (
-  <svg
-    className={className}
-    style={style}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"
-    />
-    <circle cx="12" cy="13" r="4" />
-  </svg>
-);
-const SearchIcon = ({
-  className,
-  style,
-}: {
-  className: string;
-  style?: React.CSSProperties;
-}) => (
-  <svg
-    className={className}
-    style={style}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    viewBox="0 0 24 24"
-  >
-    <circle cx="11" cy="11" r="8" />
-    <path strokeLinecap="round" d="m21 21-4.35-4.35" />
-  </svg>
-);
-const SpinIcon = ({ className }: { className: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24">
-    <circle
-      className="opacity-25"
-      cx="12"
-      cy="12"
-      r="10"
-      stroke="currentColor"
-      strokeWidth="4"
-    />
-    <path
-      className="opacity-75"
-      fill="currentColor"
-      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-    />
-  </svg>
-);

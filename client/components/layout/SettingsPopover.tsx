@@ -13,7 +13,7 @@ const SettingsPopover = ({ onClose, onViewProfile }: Props) => {
   const { logout } = useAuthService();
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Tự động đóng khi bấm ra ngoài
+  // Auto-close when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -41,7 +41,7 @@ const SettingsPopover = ({ onClose, onViewProfile }: Props) => {
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-gray-200 hover:bg-white/10 transition-colors"
           >
             <User size={18} />
-            <span>Thông tin tài khoản</span>
+            <span>Account Information</span>
           </button>
         </li>
         <li>
@@ -50,7 +50,7 @@ const SettingsPopover = ({ onClose, onViewProfile }: Props) => {
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-red-400 hover:bg-red-500/10 transition-colors"
           >
             <LogOut size={18} />
-            <span>Đăng xuất</span>
+            <span>Logout</span>
           </button>
         </li>
       </ul>

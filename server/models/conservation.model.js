@@ -4,7 +4,11 @@ import mongoose from "mongoose";
 const participantSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    role: { type: String, enum: ["member", "admin"], default: "member" },
+    role: {
+      type: String,
+      enum: ["member", "admin", "owner"],
+      default: "member",
+    },
     joinedAt: { type: Date, default: Date.now },
     lastRead: { type: Date, default: Date.now },
     unreadCount: { type: Number, default: 0 },
@@ -22,7 +26,7 @@ const conversationSchema = new mongoose.Schema(
     lastMessage: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
     lastMessageAt: { type: Date },
   },
-  { timestamps: true},
+  { timestamps: true },
 );
 
 conversationSchema.index({ "participants.user": 1, lastMessageAt: -1 });
@@ -31,4 +35,7 @@ conversationSchema.index(
   { partialFilterExpression: { type: "direct" } },
 );
 
-export const ConversationModel = mongoose.model("Conversation", conversationSchema);
+export const ConversationModel = mongoose.model(
+  "Conversation",
+  conversationSchema,
+);

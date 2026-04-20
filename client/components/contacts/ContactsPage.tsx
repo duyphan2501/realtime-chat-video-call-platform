@@ -35,8 +35,7 @@ export default function ContactsPage() {
         });
         const convId = res.data?.conversation?._id ?? res.data?._id;
         if (convId) {
-          setActiveId(convId);
-          router.push("/");
+          router.push("/?conv=" + convId);
         }
       } catch {
         toast.error("Failed to open conversation");
@@ -64,16 +63,16 @@ export default function ContactsPage() {
     : false;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f6f6f8] dark:bg-[#0b0b18]">
+    <div className="flex h-screen overflow-hidden  bg-[#0b0b18]">
       {/* ── Main Content ─────────────────────────── */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* ── Header ─────────────────────────────── */}
-        <header className="h-20 flex items-center justify-between px-8 border-b border-slate-200 dark:border-slate-800 shrink-0 bg-white dark:bg-[#101022]">
+        <header className="h-20 flex items-center justify-between px-8 border-b  border-slate-800 shrink-0  bg-[#101022]">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+            <h2 className="text-xl font-bold text-white">
               Contacts
             </h2>
-            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+            <div className="h-6 w-px  bg-slate-700" />
             <p className="text-sm text-slate-300">{friends.length} friends</p>
           </div>
 
@@ -100,8 +99,8 @@ export default function ContactsPage() {
           {selectedContact ? (
             <div
               className={`
-              fixed inset-0 z-50 bg-white dark:bg-[#101022]
-              md:relative md:inset-auto md:z-0 md:flex  md:border-l md:border-slate-200 md:dark:border-slate-800
+              fixed inset-0 z-50  bg-[#101022]
+              md:relative md:inset-auto md:z-0 md:flex  md:border-l  md:border-slate-800
               ${selectedContact ? "flex" : "hidden"}
             `}
             >
@@ -131,12 +130,12 @@ export default function ContactsPage() {
 /* ── Empty state ─────────────────────────────────────────── */
 function EmptyState() {
   return (
-    <aside className="hidden xl:flex w-80 flex-col items-center justify-center border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-[#101022]">
+    <aside className="hidden xl:flex w-80 flex-col items-center justify-center border-l  border-slate-800  bg-[#101022]">
       <div className="w-20 h-20 rounded-3xl flex items-center justify-center bg-primary/10">
         <Users className="w-10 h-10 text-primary" />
       </div>
       <div className="text-center mt-4">
-        <p className="font-bold text-lg mb-1 text-slate-900 dark:text-white">
+        <p className="font-bold text-lg mb-1  text-white">
           Select a contact
         </p>
         <p className="text-sm text-slate-500">

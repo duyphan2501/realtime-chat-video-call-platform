@@ -22,15 +22,13 @@ export default function SearchResultRow({
   onAddFriend,
   isLoading = false,
 }: SearchResultRowProps) {
-  const avatarUrl = getAvatar(user)
+  const avatarUrl = getAvatar(user);
 
   return (
     <div
       onClick={onClick}
       className={`group flex items-center justify-between p-3 rounded-xl transition-all cursor-pointer ${
-        selected
-          ? "bg-slate-100 dark:bg-slate-800/50"
-          : "hover:bg-slate-50 dark:hover:bg-white/3"
+        selected ? "bg-slate-800/50" : "hover:bg-white/3"
       }`}
     >
       {/* Left: Avatar + Info */}
@@ -41,25 +39,20 @@ export default function SearchResultRow({
           className="h-10 w-10 rounded-full object-cover shrink-0"
         />
         <div className="flex flex-col">
-          <span className="font-semibold text-sm text-slate-900 dark:text-white">
-            {user.name}
-          </span>
+          <span className="font-semibold text-sm text-white">{user.name}</span>
           <span className="text-xs text-slate-500">{user.email}</span>
         </div>
       </div>
 
       {/* Right: Status/Action */}
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="shrink-0"
-      >
+      <div onClick={(e) => e.stopPropagation()} className="shrink-0">
         {isFriend ? (
-          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400">
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-500/10 text-green-400">
             <UserCheck className="w-3.5 h-3.5" />
             Friends
           </span>
         ) : isSent || isLoading ? (
-          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-500">
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-500">
             <Clock className="w-3.5 h-3.5" />
             Sent
           </span>

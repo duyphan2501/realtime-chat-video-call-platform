@@ -22,7 +22,7 @@ export default function AuthProvider({
   const token = useAuthStore((s) => s.accessToken);
   const { connect, disconnect } = useSocketMain();
 
-  // Danh sách các route không cần check auth
+  // List of routes that don't need auth check
   const isAuthRoute = pathname?.startsWith("/auth");
   useEffect(() => {
     const initAuth = async () => {
@@ -50,7 +50,7 @@ export default function AuthProvider({
   }, [token, user, connect, disconnect]);
 
   useSocketEvents();
-  
+
   if (isLoading) return <Loading />;
 
   return (

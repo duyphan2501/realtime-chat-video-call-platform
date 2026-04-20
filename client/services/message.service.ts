@@ -102,7 +102,7 @@ export const useMessageService = () => {
 
     onSuccess: (res) => {
       const newMessage = res.data.data;
-      useConversationStore.getState().bumpConversation(newMessage);
+      useConversationStore.getState().bumpConversation(newMessage, 0);
       addMessage(newMessage as any);
       if (newMessage.attachments.length > 0) {
         // Ép phần Info tải lại dữ liệu mới

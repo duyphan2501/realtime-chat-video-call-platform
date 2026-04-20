@@ -1,4 +1,5 @@
 import { redisClient } from "../config/redis.config.js";
+import { MessageService } from "../services/index.js";
 
 export default (io, socket) => {
   const userId = socket.userId.toString();
@@ -7,17 +8,41 @@ export default (io, socket) => {
     "webrtc:offer",
     async ({ targetUserId, offer, callType, startedAt, conversationId }) => {
       const isBusy = await redisClient.hGet("active_calls", targetUserId);
-      if (isBusy) return socket.emit("call:busy", { targetUserId });
+      if (isBusy) {
+        console.log(
+          `[Missed Call] User ${targetUserId} is busy. Call from ${userId} missed.`,
+        );
+
+        // Log missed call message to conversation
+        try {
+          await MessageService.sendMessage({
+            conversationId,
+            senderId: userId,
+            type: callType || "call",
+            callData: {
+              status: "missed",
+              duration: 0,
+            },
+          });
+        } catch (error) {
+          console.error(
+            `[Error] Failed to log missed call for user ${targetUserId}:`,
+            error.message,
+          );
+        }
+
+        return socket.emit("call:user_busy", { targetUserId });
+      }
 
       // Dữ liệu cuộc gọi đầy đủ
       const callMetadata = JSON.stringify({
-        callerId: userId, // Người gọi
-        socketId: socket.id,
+        callerId: userId,
+        callerSocketId: socket.id, // Lưu socketId của người gọi
+        partnerId: targetUserId,
+        conversationId,
+        callType,
+        startTime: startedAt,
         offer,
-        partnerId: targetUserId, // Người nhận
-        conversationId, // ID cuộc trò chuyện
-        callType, // "voice" hoặc "video"
-        startTime: startedAt, // Dùng để tính duration khi kết thúc
       });
 
       // Lưu mapping cho cả 2 để khi bất kỳ ai disconnect đều truy xuất được data này
@@ -33,14 +58,22 @@ export default (io, socket) => {
     },
   );
 
-  socket.on("webrtc:answer", ({ targetUserId, answer }) => {
+  socket.on("webrtc:answer", async ({ targetUserId, answer }) => {
     const peerUser = socket.user;
     if (!peerUser) return;
 
-    io.to(`user_${targetUserId}`).emit("webrtc:answer", {
-      answer,
-      peerUser,
-    });
+    // Lấy data hiện tại và bổ sung receiverSocketId
+    const rawData = await redisClient.hGet("active_calls", userId);
+    if (rawData) {
+      const data = JSON.parse(rawData);
+      data.receiverSocketId = socket.id; // Tab hiện tại của người nhận
+
+      const updatedData = JSON.stringify(data);
+      await redisClient.hSet("active_calls", userId, updatedData);
+      await redisClient.hSet("active_calls", targetUserId, updatedData);
+    }
+
+    io.to(`user_${targetUserId}`).emit("webrtc:answer", { answer, peerUser });
   });
 
   socket.on("webrtc:ice_candidate", ({ targetUserId, candidate }) => {

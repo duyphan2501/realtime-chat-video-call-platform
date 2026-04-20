@@ -3,6 +3,7 @@ import { useAPI } from "@/API/useAPI";
 import { useAuthStore } from "@/store";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { User } from "@/types";
 
 type LoginCredentials = {
   email: string;
@@ -36,10 +37,12 @@ type UpdateProfilePayload = {
   phone?: string;
   gender?: string;
   dob?: string;
+  avatar?: File | null;
 };
 
 export const useAuthService = () => {
   const api = useAPI();
+  const uploadApi = api.upload;
   const setAuth = useAuthStore((s) => s.setAuth);
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const setSessionExpired = useAuthStore((s) => s.setSessionExpired);
@@ -92,7 +95,8 @@ export const useAuthService = () => {
   });
 
   const registerMutation = useMutation({
-    mutationFn: (credentials: RegisterCredentials) => api.auth.register(credentials),
+    mutationFn: (credentials: RegisterCredentials) =>
+      api.auth.register(credentials),
     onError: (error: any) => {
       const msg = error.response?.data?.message || "Failed to register";
       toast.error(msg);
@@ -108,15 +112,18 @@ export const useAuthService = () => {
   });
 
   const forgotPasswordMutation = useMutation({
-    mutationFn: (payload: ForgotPasswordPayload) => api.auth.forgotPassword(payload),
+    mutationFn: (payload: ForgotPasswordPayload) =>
+      api.auth.forgotPassword(payload),
     onError: (error: any) => {
-      const msg = error.response?.data?.message || "Failed to send reset password email";
+      const msg =
+        error.response?.data?.message || "Failed to send reset password email";
       toast.error(msg);
     },
   });
 
   const resetPasswordMutation = useMutation({
-    mutationFn: (payload: ResetPasswordPayload) => api.auth.resetPassword(payload),
+    mutationFn: (payload: ResetPasswordPayload) =>
+      api.auth.resetPassword(payload),
     onError: (error: any) => {
       const msg = error.response?.data?.message || "Failed to reset password";
       toast.error(msg);
@@ -124,14 +131,25 @@ export const useAuthService = () => {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: (payload: UpdateProfilePayload) => api.auth.updateProfile(payload),
-    onSuccess: (res, variables) => {
+    mutationFn: async (payload: UpdateProfilePayload) => {
+      const { avatar, ...profileFields } = payload;
+      let uploadedAvatarUrl: string | undefined;
+      if (avatar) {
+        const formData = new FormData();
+        formData.append("files", avatar);
+        const res = await uploadApi.uploadImages(formData);
+        if (res.data.uploadedImages?.[0]) {
+          uploadedAvatarUrl = res.data.uploadedImages[0].url;
+        }
+      }
+      return api.auth.updateProfile({ ...profileFields, avatar: uploadedAvatarUrl });
+    },
+    onSuccess: (res) => {
       toast.success(res.data?.message || "Cập nhật thông tin thành công");
       const currentUser = useAuthStore.getState().user;
       const accessToken = useAuthStore.getState().accessToken;
-      if (currentUser && accessToken) {
-        const updatedUser = { ...currentUser, ...variables };
-        setAuth(updatedUser, accessToken);
+      if (currentUser && accessToken && res.data?.user) {
+        setAuth(res.data.user as User, accessToken);
       }
     },
     onError: (error: any) => {

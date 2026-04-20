@@ -19,12 +19,12 @@ import ProfileModal from "./ProfileModal";
 const NAV_ITEMS = [
   {
     href: "/",
-    label: "Tin nhắn",
+    label: "Messages",
     Icon: MessageSquare,
   },
   {
     href: "/contacts",
-    label: "Danh bạ",
+    label: "Contacts",
     Icon: Users,
   },
 ];

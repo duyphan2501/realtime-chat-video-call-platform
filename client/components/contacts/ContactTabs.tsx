@@ -35,7 +35,7 @@ export default function ContactTabs({
           className={`text-sm font-medium pb-7 pt-7 -mb-0.5 transition-colors border-b-2 ${
             activeTab === tab.id
               ? "text-primary border-primary"
-              : "text-slate-500 hover:text-slate-900 dark:hover:text-white border-transparent"
+              : "text-slate-500 hover:text-white border-transparent"
           }`}
         >
           {tab.label}

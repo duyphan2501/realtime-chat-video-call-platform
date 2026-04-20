@@ -7,12 +7,12 @@ interface ConversationMeta {
 }
 
 interface MessageState {
-  messages: Record<string, Message[]>; // CID -> Danh sách tin nhắn
-  meta: Record<string, ConversationMeta>; // Trạng thái load của từng CID
-  activeOrder: string[]; // Thứ tự các CID vừa truy cập (để dọn dẹp RAM)
+  messages: Record<string, Message[]>; // CID -> List of messages
+  meta: Record<string, ConversationMeta>; // Load state of each CID
+  activeOrder: string[]; // Order of recently accessed CIDs (for RAM cleanup)
   replyingTo: Message | null;
 
-  // Actions chính
+  // Main actions
   setMessages: (
     cid: string,
     msgs: Message[],
@@ -27,7 +27,7 @@ interface MessageState {
   ) => void;
   addMessage: (msg: Message) => void;
 
-  // Trạng thái tin nhắn
+  // Message status
   updateReactions: (cid: string, msgId: string, reactions: Reaction[]) => void;
   markDeleted: (cid: string, msgId: string) => void;
   markAsDelivered: (msgId: string, cid: string, tempId: string) => void;
@@ -38,7 +38,7 @@ interface MessageState {
   updateMessageStatus: (tempId: string, status: "failed" | "sent") => void;
 }
 
-const MAX_CONVERSATIONS_IN_RAM = 5; // Giới hạn số hội thoại lưu trong RAM
+const MAX_CONVERSATIONS_IN_RAM = 5; // Limit number of conversations stored in RAM
 
 export const useMessageStore = create<MessageState>((set) => ({
   messages: {},
@@ -46,7 +46,7 @@ export const useMessageStore = create<MessageState>((set) => ({
   activeOrder: [],
   replyingTo: null,
 
-  // 1. Load lần đầu (hoặc chuyển tab)
+  // 1. Load first time (or switch tab)
   setMessages: (cid, msgs, hasMore, nextCursor) =>
     set((s) => {
       const newOrder = [cid, ...s.activeOrder.filter((id) => id !== cid)];
@@ -65,12 +65,12 @@ export const useMessageStore = create<MessageState>((set) => ({
       return { messages: newMessages, meta: newMeta, activeOrder: finalOrder };
     }),
 
-  // 2. Load thêm tin nhắn cũ (Prepend)
+  // 2. Load more old messages (Prepend)
   prependMessages: (cid, msgs, hasMore, nextCursor) =>
     set((s) => ({
       messages: {
         ...s.messages,
-        [cid]: [...msgs.reverse(), ...(s.messages[cid] || [])], // Tin nhắn cũ chèn vào đầu
+        [cid]: [...msgs.reverse(), ...(s.messages[cid] || [])], // Old messages inserted at the beginning
       },
       meta: {
         ...s.meta,
@@ -78,7 +78,7 @@ export const useMessageStore = create<MessageState>((set) => ({
       },
     })),
 
-  // 3. Nhận tin nhắn mới (Real-time hoặc gửi đi)
+  // 3. Receive new message (real-time or sent)
   addMessage: (msg) =>
     set((s) => {
       const cid =
@@ -87,7 +87,7 @@ export const useMessageStore = create<MessageState>((set) => ({
           : (msg.conversation as any)._id;
       const currentMsgs = s.messages[cid] || [];
 
-      // Tránh trùng lặp (nếu socket gửi về tin nhắn mình vừa gửi)
+      // Avoid duplicates (if socket sends back message just sent)
       if (currentMsgs.find((m) => m._id === msg._id)) return s;
       const existsIndex = currentMsgs.findIndex((m) => m._id === msg.tempId);
 
@@ -106,7 +106,7 @@ export const useMessageStore = create<MessageState>((set) => ({
       }
       return {
         messages: { ...s.messages, [cid]: [...currentMsgs, msg] },
-        activeOrder: [cid, ...s.activeOrder.filter((id) => id !== cid)], // Đẩy lên đầu danh sách hoạt động
+        activeOrder: [cid, ...s.activeOrder.filter((id) => id !== cid)], // Push to top of active list
       };
     }),
 
@@ -129,7 +129,7 @@ export const useMessageStore = create<MessageState>((set) => ({
             ? {
                 ...m,
                 deletedForEveryone: true,
-                content: "Tin nhắn đã bị thu hồi",
+                content: "Message has been recalled",
                 attachments: [],
               }
             : m,
@@ -139,7 +139,7 @@ export const useMessageStore = create<MessageState>((set) => ({
 
   markAsDelivered: (msgId: string, cid: string, tempId: string) =>
     set((s) => {
-      // Chỉ lấy mảng tin nhắn của đúng hội thoại đó
+      // Only get message array of the correct conversation
       const conversationMessages = s.messages[cid];
       if (!conversationMessages) return s;
 
@@ -182,7 +182,7 @@ export const useMessageStore = create<MessageState>((set) => ({
         );
         if (msgIndex !== -1) {
           msgs[msgIndex] = { ...msgs[msgIndex], status };
-          break; 
+          break;
         }
       }
       return { messages: nextMessages };

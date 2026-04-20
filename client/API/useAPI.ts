@@ -8,7 +8,7 @@ import { uploadAPI } from "./upload.api";
 import { callAPI } from "./call.api";
 
 export const useAPI = () => {
-  const axios = useAxiosPrivate(); // Hook xử lý lỗi 401 & Refresh Token
+  const axios = useAxiosPrivate(); // Hook to handle 401 errors & Refresh Token
 
   return useMemo(
     () => ({

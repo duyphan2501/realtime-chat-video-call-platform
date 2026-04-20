@@ -1,13 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import { useConversationStore } from "@/store/conversation.store";
 import { useShallow } from "zustand/react/shallow";
-import { Info, X, LogOut } from "lucide-react";
+import { Info, X, LogOut, AlertTriangle, ChevronRight } from "lucide-react";
 import GroupHeader from "./GroupHeader";
 import MembersAccordion from "./MembersAccordion";
 import SharedMediaAccordion from "./SharedMediaAccordion";
 import DocumentsAccordion from "./DocumentsAccordion";
-import { useGetInfiniteSharedContent } from "@/services";
+import { useConversationService } from "@/services";
+import { useAuthStore } from "@/store";
+import { useRouter } from "next/navigation";
+import ConfirmModal from "../../ConfirmModal";
+import SelectNewOwnerModal from "../SelectNewOwnerModal";
+import { User } from "@/types";
+import ProfileModal from "@/components/layout/ProfileModal";
 
 interface Props {
   conversationId: string;
@@ -15,13 +22,74 @@ interface Props {
 }
 
 export default function RightPanel({ conversationId, onClose }: Props) {
+  const router = useRouter();
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showDisbandConfirm, setShowDisbandConfirm] = useState(false);
+  const [showSelectOwner, setShowSelectOwner] = useState(false);
+  const { leaveGroup, disbandGroup, isLeavingGroup, isDisbandingGroup } =
+    useConversationService();
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
   // Tối ưu selector: chỉ lấy đúng conversation cần thiết
   const conversation = useConversationStore(
     useShallow((state) => state.conversations.get(conversationId)),
   );
-  const sharedFiles = useGetInfiniteSharedContent(conversationId, "file");
 
   const isGroup = conversation?.type === "group";
+  const currentUser = useAuthStore((s) => s.user);
+  const isAdmin =
+    conversation?.participants.some(
+      (p) => p.user._id === currentUser?._id && p.role === "admin",
+    ) || false;
+  const isOwner =
+    conversation?.participants.some(
+      (p) => p.user._id === currentUser?._id && p.role === "owner",
+    ) || false;
+
+  const handleLeaveGroupClick = () => {
+    if (isOwner) {
+      // If user is the owner, show selection modal first
+      setShowSelectOwner(true);
+    } else {
+      // Regular member can leave directly
+      setShowLeaveConfirm(true);
+    }
+  };
+
+  const handleLeaveGroupWithNewOwner = async (newOwnerId: string) => {
+    try {
+      await leaveGroup({ conversationId: conversation!._id, newOwnerId });
+      router.push("/");
+      onClose();
+      setShowSelectOwner(false);
+    } catch (error) {
+      // Error handled by service
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    try {
+      await leaveGroup({ conversationId: conversation!._id });
+      router.push("/");
+      onClose();
+    } catch (error) {
+      // Error handled by service
+    } finally {
+      setShowLeaveConfirm(false);
+    }
+  };
+
+  const handleDisbandGroup = async () => {
+    try {
+      await disbandGroup(conversation!._id);
+      router.push("/");
+      onClose();
+    } catch (error) {
+      // Error handled by service
+    } finally {
+      setShowDisbandConfirm(false);
+    }
+  };
 
   if (!conversation) return null;
 
@@ -47,20 +115,62 @@ export default function RightPanel({ conversationId, onClose }: Props) {
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         <div className="bg-[#111118]/50">
-          <GroupHeader conversation={conversation} />
+          <GroupHeader
+            conversation={conversation}
+            isAdmin={isAdmin}
+            onViewProfile={setSelectedUser}
+          />
         </div>
 
         <div className="flex flex-col divide-y divide-gray">
-          <MembersAccordion conversation={conversation} />
+          <MembersAccordion
+            conversation={conversation}
+            isAdmin={isAdmin || isOwner}
+            onViewProfile={(user) => {
+              setSelectedUser(user);
+            }}
+          />
           <SharedMediaAccordion conversationId={conversation._id} />
           <DocumentsAccordion conversationId={conversation._id} />
         </div>
 
+        {/* Danger Zone */}
         {isGroup && (
-          <div className="p-6 mt-4">
-            <button className="w-full flex items-center justify-center gap-2 py-3 border border-red-500/30 text-red-500 text-sm font-bold rounded-xl hover:bg-red-500 hover:text-white transition-all duration-300 group">
-              <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
-              Leave Group
+          <div className="px-6 py-4 space-y-3">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2 mb-1">
+              Danger Zone
+            </p>
+
+            {isOwner && (
+              <button
+                onClick={() => setShowDisbandConfirm(true)}
+                disabled={isDisbandingGroup}
+                className="w-full flex items-center justify-between px-5 py-4 bg-red-500/5 border border-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all duration-300 group disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3 font-bold text-sm">
+                  <AlertTriangle size={18} />
+                  {isDisbandingGroup ? "Disbanding..." : "Disband Group"}
+                </div>
+                <ChevronRight
+                  size={16}
+                  className="opacity-50 group-hover:translate-x-1 transition-transform"
+                />
+              </button>
+            )}
+
+            <button
+              onClick={handleLeaveGroupClick}
+              disabled={isLeavingGroup}
+              className="w-full flex items-center justify-between px-5 py-4 bg-white/5 border border-white/5 text-slate-300 rounded-2xl hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-300 group disabled:opacity-50"
+            >
+              <div className="flex items-center gap-3 font-bold text-sm">
+                <LogOut size={18} />
+                {isLeavingGroup ? "Leaving..." : "Leave Group"}
+              </div>
+              <ChevronRight
+                size={16}
+                className="opacity-50 group-hover:translate-x-1 transition-transform"
+              />
             </button>
           </div>
         )}
@@ -72,6 +182,43 @@ export default function RightPanel({ conversationId, onClose }: Props) {
           Created May 2023
         </p>
       </footer>
+
+      <ConfirmModal
+        isOpen={showLeaveConfirm}
+        title="Leave Group"
+        message="Are you sure you want to leave this group?"
+        onConfirm={handleLeaveGroup}
+        onCancel={() => setShowLeaveConfirm(false)}
+        confirmText="Leave"
+        cancelText="Cancel"
+      />
+
+      <SelectNewOwnerModal
+        isOpen={showSelectOwner}
+        conversation={conversation!}
+        currentUserId={currentUser?._id || ""}
+        onConfirm={handleLeaveGroupWithNewOwner}
+        onCancel={() => setShowSelectOwner(false)}
+        isLoading={isLeavingGroup}
+      />
+
+      <ConfirmModal
+        isOpen={showDisbandConfirm}
+        title="Disband Group"
+        message="Are you sure you want to disband this group? This action cannot be undone."
+        onConfirm={handleDisbandGroup}
+        onCancel={() => setShowDisbandConfirm(false)}
+        confirmText="Disband"
+        cancelText="Cancel"
+      />
+
+      {selectedUser && (
+        <ProfileModal
+          user={selectedUser}
+          isEditable={selectedUser._id === currentUser?._id}
+          onClose={() => setSelectedUser(null)}
+        />
+      )}
     </div>
   );
 }

@@ -66,16 +66,17 @@ export const initSocket = async (server, clientUrl) => {
       console.log(
         `User disconnected. Socket ID: ${socket.id}, User ID: ${userId}, Remain: ${remainingSockets}`,
       );
-      const callDataRaw = await redisClient.hGet("active_calls", userId);
-
-      if (callDataRaw) {
-        const callData = JSON.parse(callDataRaw);
-
-        if (callData.socketId === socket.id) {
-          await handleCallCleanup(userId);
-        }
-      }
       if (remainingSockets === 0) {
+        const callDataRaw = await redisClient.hGet("active_calls", userId);
+        if (callDataRaw) {
+          const callData = JSON.parse(callDataRaw);
+          if (
+            socket.id === callData.callerSocketId ||
+            socket.id === callData.receiverSocketId
+          ) {
+            await handleCallCleanup(userId);
+          }
+        }
         await redisClient.sRem("online_users", userId);
         const now = new Date();
         io.emit("presence:offline", { userId, lastActive: now });

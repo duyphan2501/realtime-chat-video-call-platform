@@ -22,7 +22,7 @@ import { CallStatus } from "@/types";
 import { useCallService } from "@/services";
 
 export default function VideoCall() {
-  // ── Store (reactive — dùng selector để chỉ re-render khi đúng field thay đổi)
+  // ── Store (reactive — use selector to only re-render when correct field changes)
   const status = useCallStore((s) => s.status);
   const callType = useCallStore((s) => s.callType);
   const peerUser = useCallStore((s) => s.peerUser);
@@ -34,7 +34,7 @@ export default function VideoCall() {
   const toggleCam = useCallStore((s) => s.toggleCam);
   const startTime = useCallStore((s) => s.startTime);
 
-  // getState() — chỉ dùng cho các giá trị đọc trong event handler (không cần reactive)
+  // getState() — only use for values read in event handler (no need reactive)
   const { endCall } = useWebRTC();
   const socket = useSocketStore((s) => s.socket);
 
@@ -47,7 +47,7 @@ export default function VideoCall() {
 
   const { endCall: endCallAPI, rejectCall } = useCallService();
 
-  // Cleanup timer khi unmount
+  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (endedTimerRef.current) clearTimeout(endedTimerRef.current);
@@ -63,7 +63,7 @@ export default function VideoCall() {
     }
   }, [waitTimeLeft]);
 
-  // ── Gán remote stream vào video element
+  // ── Assign remote stream to video element
   useEffect(() => {
     const el = remoteVideoRef.current;
     if (!el || !remoteStream) return;
@@ -73,7 +73,7 @@ export default function VideoCall() {
     };
   }, [remoteStream, status]);
 
-  // ── Gán local stream vào video element
+  // ── Assign local stream to video element
   useEffect(() => {
     const el = localVideoRef.current;
     if (!el || !localStream) return;
@@ -83,14 +83,14 @@ export default function VideoCall() {
     };
   }, [localStream, status]);
 
-  // ── Sync audio track với isMuted
+  // ── Sync audio track with isMuted
   useEffect(() => {
     localStream?.getAudioTracks().forEach((t) => {
       t.enabled = !isMuted;
     });
   }, [isMuted, localStream, status]);
 
-  // ── Sync video track với isCamOff
+  // ── Sync video track with isCamOff
   useEffect(() => {
     localStream?.getVideoTracks().forEach((t) => {
       t.enabled = !isCamOff;
@@ -233,7 +233,7 @@ export default function VideoCall() {
               className="w-full h-full object-cover scale-x-[-1]"
             />
 
-            {/* Overlay khi chưa có stream */}
+            {/* Overlay when no stream yet */}
             {!localStream && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-[#111118] px-3 text-center">
                 <VideoOff className="w-5 h-5 text-white/20" />

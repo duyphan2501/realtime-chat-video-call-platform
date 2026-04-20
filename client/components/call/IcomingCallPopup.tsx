@@ -12,18 +12,10 @@ import {
 import { useCallStore, useConversationStore, useSocketStore } from "@/store";
 import { useRingCountdown, useWebRTC } from "@/hooks";
 import { useCallService } from "@/services";
+import { CallStatus } from "@/types";
+import { getAvatar } from "@/utils/user.utils";
 
-export type CallStatus =
-  | "idle"
-  | "calling"
-  | "ringing"
-  | "connected"
-  | "accepted"
-  | "ended"
-  | "missed"
-  | "rejected";
-
-// Thời gian chờ trước khi tự động từ chối (giây)
+// Waiting time before auto-decline (seconds)
 const RING_TIMEOUT_SECONDS = 30;
 
 export default function IncomingCallPopup() {
@@ -41,13 +33,13 @@ export default function IncomingCallPopup() {
   const timeLeft = useRingCountdown(30);
   const autoDeclineFiredRef = useRef(false);
 
-  // Tính phần trăm còn lại cho vòng tròn SVG
+  // Calculate remaining percentage for SVG circle
   const progress = timeLeft / RING_TIMEOUT_SECONDS; // 1 → 0
-  const radius = 58; // bán kính vòng tròn SVG (px)
+  const radius = 58; // SVG circle radius (px)
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - progress);
 
-  // Màu sắc thay đổi theo thời gian còn lại
+  // Color changes according to remaining time
   const ringColor =
     timeLeft > 15
       ? "#6366f1" // indigo
@@ -83,7 +75,7 @@ export default function IncomingCallPopup() {
     useCallStore.getState().reset();
   };
 
-  // Auto-decline khi hết thời gian
+  // Auto-decline when time runs out
   const handleAutoDecline = () => {
     if (useCallStore.getState().status !== "ringing") return;
     useCallStore.getState().reset();
@@ -93,7 +85,7 @@ export default function IncomingCallPopup() {
     if (timeLeft === 0 && status === "ringing") handleAutoDecline();
   }, [timeLeft]);
 
-  // Tách riêng: khi timeLeft về 0 thì trigger auto-decline SAU khi render xong
+  // Separate: when timeLeft reaches 0, trigger auto-decline AFTER render completes
   useEffect(() => {
     if (timeLeft === 0 && !autoDeclineFiredRef.current) {
       autoDeclineFiredRef.current = true;
@@ -101,7 +93,7 @@ export default function IncomingCallPopup() {
     }
   }, [timeLeft]);
 
-  // Reset local state nếu popup đóng lại
+  // Reset local state if popup closes
   useEffect(() => {
     if (status !== "ringing") {
       setIsAccepting(false);
@@ -110,13 +102,13 @@ export default function IncomingCallPopup() {
   }, [status]);
 
   useEffect(() => {
-    if (["ended", "rejected", "missed"].includes(status)) {
+    if (["ended", "rejected", "missed", "busy"].includes(status)) {
       const t = setTimeout(() => setStatus("idle"), 3000);
       return () => clearTimeout(t);
     }
   }, [status, setStatus]);
 
-  if (status !== "ringing") return null;
+  if (status !== "ringing" && status !== "busy") return null;
 
   const statusLabel: Partial<Record<CallStatus, string>> = {
     ringing: "Incoming Video Call...",
@@ -126,6 +118,7 @@ export default function IncomingCallPopup() {
     rejected: "Call Rejected",
     ended: "Call Ended",
     missed: "Missed Call",
+    busy: "User is busy",
   };
 
   const labelColor: Partial<Record<CallStatus, string>> = {
@@ -136,52 +129,59 @@ export default function IncomingCallPopup() {
     rejected: "text-red-500",
     ended: "text-slate-400",
     missed: "text-amber-500",
+    busy: "text-amber-500",
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="w-full max-w-sm bg-[#111118] border border-white/6 rounded-[28px] shadow-2xl shadow-black/60 overflow-hidden">
-        {/* Avatar với countdown ring */}
+        {/* Avatar with countdown ring */}
         <div className="flex justify-center pt-10">
           <div className="relative size-28">
             {/* Ping animations */}
-            <span className="absolute inset-0 rounded-full bg-indigo-500/20 animate-ping [animation-duration:1.5s]" />
-            <span className="absolute inset-0 scale-110 rounded-full bg-indigo-500/10" />
-            <span className="absolute inset-0 scale-125 rounded-full bg-indigo-500/5 animate-ping [animation-duration:2s] [animation-delay:0.3s]" />
+            {status === "ringing" && (
+              <>
+                <span className="absolute inset-0 rounded-full bg-indigo-500/20 animate-ping [animation-duration:1.5s]" />
+                <span className="absolute inset-0 scale-110 rounded-full bg-indigo-500/10" />
+                <span className="absolute inset-0 scale-125 rounded-full bg-indigo-500/5 animate-ping [animation-duration:2s] [animation-delay:0.3s]" />
+              </>
+            )}
 
-            {/* SVG countdown ring — nằm phía trên avatar, bên ngoài viền */}
-            <svg
-              className="absolute -inset-2.5 z-20 size-[calc(100%+20px)] -rotate-90"
-              viewBox="0 0 136 136"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              {/* Track */}
-              <circle
-                cx="68"
-                cy="68"
-                r={radius}
-                stroke="rgba(255,255,255,0.06)"
-                strokeWidth="3"
-              />
-              {/* Progress */}
-              <circle
-                cx="68"
-                cy="68"
-                r={radius}
-                stroke={ringColor}
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                style={{
-                  transition: "stroke-dashoffset 1s linear, stroke 0.5s ease",
-                }}
-              />
-            </svg>
+            {/* SVG countdown ring — located above avatar, outside the border */}
+            {status === "ringing" && (
+              <svg
+                className="absolute -inset-2.5 z-20 size-[calc(100%+20px)] -rotate-90"
+                viewBox="0 0 136 136"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {/* Track */}
+                <circle
+                  cx="68"
+                  cy="68"
+                  r={radius}
+                  stroke="rgba(255,255,255,0.06)"
+                  strokeWidth="3"
+                />
+                {/* Progress */}
+                <circle
+                  cx="68"
+                  cy="68"
+                  r={radius}
+                  stroke={ringColor}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  style={{
+                    transition: "stroke-dashoffset 1s linear, stroke 0.5s ease",
+                  }}
+                />
+              </svg>
+            )}
 
             <img
-              src={`${incoming?.from.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuC24lfGzrs-a5tPV0Yyc8KL4I0fYxuR91eHoJMrML0eqC68UGHriJWwFtbwLOnUPnzN0TPIYLvUk7PePItGBPtQbUnnM2bcDq8yo2n28XH5EZ12yo2GiqYuPjzzCDT6m_Rsf5LnghmgBd3lQtiUNZ6TN6CchiZmGV1WypKKQYcN5UIINFKah-49MW_U0Px6DuGgVuimTuIxvusnrDEB6dpBEqz02zhLQ6ZXbauW9s3zMZAtH2uf7XjzuRn8X1j-bRzasSYqOJ3OtYaD"}`}
+              src={getAvatar({name: incoming?.from.name || "User", avatar: incoming?.from.avatar})}
               alt={incoming?.from.name}
               className="relative z-10 size-28 rounded-full object-cover border-4 border-[#111118] shadow-xl"
             />
@@ -203,17 +203,19 @@ export default function IncomingCallPopup() {
           </p>
 
           {/* Countdown text */}
-          <p
-            className={`text-xs mt-1.5 font-mono tabular-nums transition-colors duration-500 ${
-              timeLeft > 15
-                ? "text-white/25"
-                : timeLeft > 8
-                  ? "text-amber-400/70"
-                  : "text-red-400/80 animate-pulse"
-            }`}
-          >
-            Auto-decline in {timeLeft}s
-          </p>
+          {status === "ringing" && (
+            <p
+              className={`text-xs mt-1.5 font-mono tabular-nums transition-colors duration-500 ${
+                timeLeft > 15
+                  ? "text-white/25"
+                  : timeLeft > 8
+                    ? "text-amber-400/70"
+                    : "text-red-400/80 animate-pulse"
+              }`}
+            >
+              Auto-decline in {timeLeft}s
+            </p>
+          )}
         </div>
 
         {/* Permission error banner */}
@@ -223,42 +225,58 @@ export default function IncomingCallPopup() {
           </div>
         )}
 
-        {/* Accept / Decline */}
-        <div className="flex gap-4 px-8 pt-5 pb-4">
-          {/* Decline */}
-          <div className="flex-1 flex flex-col items-center gap-2">
-            <button
-              onClick={handleDecline}
-              disabled={status !== "ringing" || isAccepting}
-              className="size-14 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <PhoneOffIcon size={24} />
-            </button>
-            <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">
-              Decline
-            </span>
-          </div>
+        {/* Accept / Decline or Close */}
+        {status === "ringing" ? (
+          <div className="flex gap-4 px-8 pt-5 pb-4">
+            {/* Decline */}
+            <div className="flex-1 flex flex-col items-center gap-2">
+              <button
+                onClick={handleDecline}
+                disabled={status !== "ringing" || isAccepting}
+                className="size-14 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <PhoneOffIcon size={24} />
+              </button>
+              <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">
+                Decline
+              </span>
+            </div>
 
-          {/* Accept */}
-          <div className="flex-1 flex flex-col items-center gap-2">
-            <button
-              onClick={handleAccept}
-              disabled={status !== "ringing" || isAccepting}
-              className="size-14 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center hover:bg-green-500 hover:text-white transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed relative"
-            >
-              {isAccepting ? (
-                <Loader2 size={22} className="animate-spin" />
-              ) : (
-                <VideoIcon size={24} />
-              )}
-            </button>
-            <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">
-              {isAccepting ? "Connecting…" : "Accept"}
-            </span>
+            {/* Accept */}
+            <div className="flex-1 flex flex-col items-center gap-2">
+              <button
+                onClick={handleAccept}
+                disabled={status !== "ringing" || isAccepting}
+                className="size-14 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center hover:bg-green-500 hover:text-white transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed relative"
+              >
+                {isAccepting ? (
+                  <Loader2 size={22} className="animate-spin" />
+                ) : (
+                  <VideoIcon size={24} />
+                )}
+              </button>
+              <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">
+                {isAccepting ? "Connecting…" : "Accept"}
+              </span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex justify-center px-8 pt-5 pb-4">
+            <div className="flex flex-col items-center gap-2">
+              <button
+                onClick={() => useCallStore.getState().reset()}
+                className="size-14 rounded-full bg-slate-500/10 text-slate-400 flex items-center justify-center hover:bg-slate-500 hover:text-white transition-colors duration-200"
+              >
+                <BanIcon size={24} />
+              </button>
+              <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">
+                Close
+              </span>
+            </div>
+          </div>
+        )}
 
-        {/* Permission hint — chỉ hiện khi đang xin quyền */}
+        {/* Permission hint — only show when requesting permission */}
         {isAccepting && !permissionError && (
           <div className="mx-6 mb-4 px-4 py-3 rounded-[14px] bg-indigo-500/8 border border-indigo-500/15 text-indigo-300/70 text-xs text-center leading-relaxed">
             Allow camera & microphone access in your browser to continue
@@ -266,53 +284,57 @@ export default function IncomingCallPopup() {
         )}
 
         {/* Quick message */}
-        <div className="px-6 pb-5">
-          <div className="flex items-center justify-between p-4 rounded-[18px] bg-white/4 border border-white/6">
-            <div>
-              <p className="text-white text-[13px] font-semibold">
-                Can't talk right now?
-              </p>
-              <p className="text-white/35 text-xs mt-0.5">
-                Send a quick message instead
-              </p>
+        {status === "ringing" && (
+          <div className="px-6 pb-5">
+            <div className="flex items-center justify-between p-4 rounded-[18px] bg-white/4 border border-white/6">
+              <div>
+                <p className="text-white text-[13px] font-semibold">
+                  Can't talk right now?
+                </p>
+                <p className="text-white/35 text-xs mt-0.5">
+                  Send a quick message instead
+                </p>
+              </div>
+              <button
+                onClick={() => {}}
+                disabled={status !== "ringing" || isAccepting}
+                className="flex items-center gap-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-semibold py-2 px-3 rounded-[10px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <MessageSquareIcon size={12} />
+                Message
+              </button>
             </div>
-            <button
-              onClick={() => {}}
-              disabled={status !== "ringing" || isAccepting}
-              className="flex items-center gap-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-semibold py-2 px-3 rounded-[10px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <MessageSquareIcon size={12} />
-              Message
-            </button>
           </div>
-        </div>
+        )}
 
         {/* Footer */}
-        <div className="border-t border-white/6 py-3 px-6 flex justify-center gap-8">
-          {[
-            {
-              icon: <VolumeXIcon size={15} />,
-              label: "Mute",
-              handleClick: () => {},
-            },
-            {
-              icon: <BanIcon size={15} />,
-              label: "Ignore",
-              handleClick: () => {
-                useCallStore.getState().reset();
+        {status === "ringing" && (
+          <div className="border-t border-white/6 py-3 px-6 flex justify-center gap-8">
+            {[
+              {
+                icon: <VolumeXIcon size={15} />,
+                label: "Mute",
+                handleClick: () => {},
               },
-            },
-          ].map(({ icon, label, handleClick }) => (
-            <button
-              key={label}
-              className="flex items-center gap-1.5 text-xs text-white/30 hover:text-indigo-400 transition-colors"
-              onClick={handleClick}
-            >
-              {icon}
-              {label}
-            </button>
-          ))}
-        </div>
+              {
+                icon: <BanIcon size={15} />,
+                label: "Ignore",
+                handleClick: () => {
+                  useCallStore.getState().reset();
+                },
+              },
+            ].map(({ icon, label, handleClick }) => (
+              <button
+                key={label}
+                className="flex items-center gap-1.5 text-xs text-white/30 hover:text-indigo-400 transition-colors"
+                onClick={handleClick}
+              >
+                {icon}
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

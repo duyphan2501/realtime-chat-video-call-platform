@@ -46,7 +46,7 @@ export function useCallHandlers(socket: Socket | null) {
     };
 
     const onUserBusy = () => {
-      useCallStore.getState().setStatus("idle");
+      useCallStore.getState().setStatus("busy");
     };
 
     socket.on("call:incoming", onIncoming);

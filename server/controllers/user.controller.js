@@ -12,10 +12,10 @@ export const getMe = async (req, res, next) => {
     const userId = req.user.userId;
     if (!userId) throw createHttpError.BadRequest("UserId is missing");
 
-    const user = await UserModel.findById(userId);
+    const user = await AuthService.getUserById(userId);
     if (!user) throw createHttpError.NotFound("User not found");
 
-    res.status(200).json({ success: true, user: filterFieldUser(user) });
+    res.status(200).json({ success: true, user});
   } catch (error) {
     next(error);
   }
@@ -31,7 +31,7 @@ export const updateMe = async (req, res, next) => {
 
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
-      { name, bio, phone, gender, dob },
+      { name, bio, phone, gender: gender || null, dob },
       { new: true, runValidators: true },
     );
 
@@ -364,6 +364,47 @@ export const searchOnlyFriends = async (req, res, next) => {
   }
 };
 
+/* ═══════════════════════════════════════════════════════════
+   GET /users/:userId — get user profile by ID
+   ═══════════════════════════════════════════════════════════ */
+export const getProfile = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) throw createHttpError.BadRequest("User ID is required");
+
+    const user = await AuthService.getUserById(userId);
+    if (!user) throw createHttpError.NotFound("User not found");
+    res.status(200).json({ success: true, user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════
+   POST /users/me/avatar — update user avatar
+   ═══════════════════════════════════════════════════════════ */
+export const updateAvatar = async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    if (!userId) throw createHttpError.BadRequest("UserId is missing");
+    if (!req.file) throw createHttpError.BadRequest("No file uploaded");
+
+    const avatarUrl = req.file.path;
+
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      userId,
+      { avatar: avatarUrl },
+      { new: true, runValidators: true },
+    );
+
+    if (!updatedUser) throw createHttpError.NotFound("User not found");
+
+    res.status(200).json({ success: true, user: filterFieldUser(updatedUser) });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const UserController = {
   getMe,
   updateMe,
@@ -376,4 +417,6 @@ export const UserController = {
   unfriend,
   searchOnlyFriends,
   cancelFriendRequest,
+  getProfile,
+  updateAvatar,
 };

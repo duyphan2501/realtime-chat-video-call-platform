@@ -65,7 +65,7 @@ const ConversationItem = ({
           </span>
           {conv.lastMessage && (
             <span className="text-[11px] ml-2 shrink-0">
-              {fmtTime(conv.updatedAt)}
+              {fmtTime(conv.lastMessage.createdAt)}
             </span>
           )}
         </div>

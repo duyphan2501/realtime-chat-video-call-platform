@@ -22,7 +22,7 @@ export default function RequestCard({
   const isSentRequest = user.friendStatus === "sent";
   return (
     <div
-      className="rounded-xl p-3 flex items-center gap-3 cursor-pointer transition-colors bg-slate-100/50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/50"
+      className="rounded-xl p-3 flex items-center gap-3 cursor-pointer transition-colors bg-slate-800/30 hover:bg-slate-800/50"
       onClick={onClick}
     >
       {/* Avatar */}
@@ -34,9 +34,7 @@ export default function RequestCard({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">
-          {user.name}
-        </p>
+        <p className="font-semibold text-sm text-white truncate">{user.name}</p>
         <p className="text-xs text-slate-500 truncate">{user.email}</p>
 
         {/* Action buttons */}
@@ -60,7 +58,7 @@ export default function RequestCard({
               </button>
               <button
                 onClick={onReject}
-                className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold text-slate-300 bg-slate-700 hover:bg-slate-600 transition-colors"
               >
                 <X className="w-3 h-3" />
                 Decline

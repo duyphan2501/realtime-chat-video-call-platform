@@ -2,22 +2,27 @@ import { AxiosInstance } from "axios";
 
 export const userAPI = (axiosPrivate: AxiosInstance) => ({
   /* ── Profile ──────────────────────────── */
-  getMe: () =>
-    axiosPrivate.get("/users/me"),
+  getMe: () => axiosPrivate.get("/users/me"),
+  getProfile: (userId: string) => axiosPrivate.get(`/users/${userId}`),
   updateMe: (data: { name?: string; bio?: string; phone?: string }) =>
     axiosPrivate.put("/users/me", data),
+  updateAvatar: (avatar: File) => {
+    const formData = new FormData();
+    formData.append("files", avatar);
+    return axiosPrivate.post("/users/me/avatar", formData);
+  },
 
   /* ── Search ───────────────────────────── */
   searchUsers: (q: string, page = 1, limit = 20) =>
     axiosPrivate.get(`/users/search?q=${q}&page=${page}&limit=${limit}`),
   searchOnlyFriends: (query: string, limit = 10) =>
-    axiosPrivate.get(`/users/search/friends?searchTerm=${query}&limit=${limit}`),
+    axiosPrivate.get(
+      `/users/search/friends?searchTerm=${query}&limit=${limit}`,
+    ),
 
   /* ── Friends ──────────────────────────── */
-  getFriends: () =>
-    axiosPrivate.get("/users/friends"),
-  getFriendRequests: () =>
-    axiosPrivate.get("/users/friend-requests"),
+  getFriends: () => axiosPrivate.get("/users/friends"),
+  getFriendRequests: () => axiosPrivate.get("/users/friend-requests"),
 
   /* ── Friend Request Actions ───────────── */
   sendFriendRequest: (userId: string) =>
@@ -30,6 +35,5 @@ export const userAPI = (axiosPrivate: AxiosInstance) => ({
     axiosPrivate.delete(`/users/friend-request/${userId}/cancel`),
 
   /* ── Unfriend ─────────────────────────── */
-  unfriend: (userId: string) =>
-    axiosPrivate.delete(`/users/friends/${userId}`),
+  unfriend: (userId: string) => axiosPrivate.delete(`/users/friends/${userId}`),
 });
