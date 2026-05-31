@@ -11,6 +11,7 @@ import { useState, useRef, useCallback } from "react";
 import { useMessageStore } from "@/store";
 import { useTyping } from "@/hooks/useTyping";
 import IconBtn from "../IconBtn";
+import { getUserName } from "@/utils/user.utils";
 
 interface Props {
   convId: string;
@@ -77,7 +78,7 @@ export default function ChatInput({ convId, onSend, disabled }: Props) {
           <div className="w-0.5 h-8 rounded-full shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-white">
-              {replyingTo.sender.name}
+              {getUserName(replyingTo.sender)}
             </p>
             <p className="text-xs truncate text-gray-400">
               {replyingTo.content || "Tệp đính kèm"}

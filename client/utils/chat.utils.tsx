@@ -2,18 +2,19 @@ import { Conversation, Reaction, User, Message, TypingUser } from "@/types";
 import { Ban, Check, CheckCheck, Loader } from "lucide-react";
 import { JSX } from "react";
 import { Phone, Video, PhoneOff, PhoneMissed, RotateCcw } from "lucide-react";
+import { getUserName } from "./user.utils";
 
 /**
  * Gets the ID of the other participant in a 1-on-1 conversation
  */
 function getOtherId(c: Conversation, me: User | null): string {
-  const otherParticipant = c.participants.find((p) => {
-    const id = typeof p.user === "object" ? p.user._id : p.user;
+  const otherParticipant = (c.participants ?? []).find((p) => {
+    const id = typeof p.user === "object" ? p.user?._id : p.user;
     return id !== me?._id;
   });
 
   const userObj = otherParticipant?.user;
-  return typeof userObj === "object" ? userObj._id : userObj || "";
+  return typeof userObj === "object" ? userObj?._id : userObj || "";
 }
 
 /**
@@ -22,12 +23,12 @@ function getOtherId(c: Conversation, me: User | null): string {
 function getConvName(c: Conversation, me: User | null): string {
   if (c.type === "group") return c.name || "Group Chat";
 
-  const other = c.participants.find((p) => {
-    const id = typeof p.user === "object" ? p.user._id : p.user;
+  const other = (c.participants ?? []).find((p) => {
+    const id = typeof p.user === "object" ? p.user?._id : p.user;
     return id !== me?._id;
   });
 
-  return (other?.user as User)?.name || "User";
+  return getUserName(other?.user as User | null | undefined);
 }
 
 /**
@@ -36,8 +37,8 @@ function getConvName(c: Conversation, me: User | null): string {
 function getConvAvatar(c: Conversation, me: User | null): string | undefined {
   if (c.type === "group") return c.avatar;
 
-  const other = c.participants.find((p) => {
-    const id = typeof p.user === "object" ? p.user._id : p.user;
+  const other = (c.participants ?? []).find((p) => {
+    const id = typeof p.user === "object" ? p.user?._id : p.user;
     return id !== me?._id;
   });
 
@@ -237,11 +238,14 @@ function fmtSize(bytes: number): string {
 }
 
 const getTypingText = (users: TypingUser[]) => {
-  if (users.length === 0) return "";
-  if (users.length === 1) return `${users[0].name} is typing`;
-  if (users.length === 2)
-    return `${users[0].name} and ${users[1].name} are typing`;
-  return `${users[0].name}, ${users[1].name} and ${users.length - 2} others are typing`;
+  const validUsers = users.filter(Boolean);
+  if (validUsers.length === 0) return "";
+  if (validUsers.length === 1) return `${getUserName(validUsers[0])} is typing`;
+  if (validUsers.length === 2)
+    return `${getUserName(validUsers[0])} and ${getUserName(validUsers[1])} are typing`;
+  return `${getUserName(validUsers[0])}, ${getUserName(validUsers[1])} and ${
+    validUsers.length - 2
+  } others are typing`;
 };
 
 export {

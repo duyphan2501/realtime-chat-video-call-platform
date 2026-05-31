@@ -1,6 +1,6 @@
 "use client";
 import type { User } from "@/types";
-import { getAvatar } from "@/utils/user.utils";
+import { getAvatar, getUserName } from "@/utils/user.utils";
 import { UserPlus, UserCheck, Clock } from "lucide-react";
 
 interface SearchResultRowProps {
@@ -23,6 +23,7 @@ export default function SearchResultRow({
   isLoading = false,
 }: SearchResultRowProps) {
   const avatarUrl = getAvatar(user);
+  const displayName = getUserName(user);
 
   return (
     <div
@@ -35,12 +36,14 @@ export default function SearchResultRow({
       <div className="flex items-center gap-3">
         <img
           src={avatarUrl}
-          alt={user.name}
+          alt={displayName}
           className="h-10 w-10 rounded-full object-cover shrink-0"
         />
         <div className="flex flex-col">
-          <span className="font-semibold text-sm text-white">{user.name}</span>
-          <span className="text-xs text-slate-500">{user.email}</span>
+          <span className="font-semibold text-sm text-white">
+            {displayName}
+          </span>
+          <span className="text-xs text-slate-500">{user.email || ""}</span>
         </div>
       </div>
 

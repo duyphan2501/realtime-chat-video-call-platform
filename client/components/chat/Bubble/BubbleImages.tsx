@@ -61,9 +61,10 @@ export default function BubbleImages({
   imgs: Attachment[];
   onClickIndex: (i: number) => void;
 }) {
-  const layout = getLayout(imgs.length);
-  const display = imgs.slice(0, MAX_DISPLAY);
-  const overflow = imgs.length - MAX_DISPLAY;
+  const safeImages = imgs.filter((img) => img?.url);
+  const layout = getLayout(safeImages.length);
+  const display = safeImages.slice(0, MAX_DISPLAY);
+  const overflow = safeImages.length - MAX_DISPLAY;
 
   return (
     <div
@@ -75,7 +76,7 @@ export default function BubbleImages({
 
         return (
           <div
-            key={img.name+i || i}
+            key={`${img.url}-${i}`}
             onClick={() => onClickIndex(i)}
             className={`
               relative cursor-pointer overflow-hidden bg-gray-200 hover:opacity-90 transition-opacity
@@ -90,7 +91,7 @@ export default function BubbleImages({
               className="h-full w-full object-cover block"
               // Đối với 1 ảnh duy nhất, ta để max-h để tránh ảnh quá dài
               style={
-                imgs.length === 1 ? { maxHeight: "500px", width: "auto" } : {}
+                safeImages.length === 1 ? { maxHeight: "500px", width: "auto" } : {}
               }
             />
 

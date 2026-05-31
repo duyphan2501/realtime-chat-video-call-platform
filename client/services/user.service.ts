@@ -3,6 +3,7 @@ import { useFriendStore } from "@/store";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import type { User } from "@/types";
+import { isValidUser } from "@/utils/user.utils";
 
 export const useFriendService = () => {
   const api = useAPI().user;
@@ -16,7 +17,7 @@ export const useFriendService = () => {
     setIsLoadingFriends(true);
     try {
       const res = await api.getFriends();
-      setFriends(res.data.friends ?? []);
+      setFriends((res.data.friends ?? []).filter(isValidUser) as User[]);
     } catch {
       /* silent */
     } finally {
@@ -27,7 +28,9 @@ export const useFriendService = () => {
   const loadFriendRequests = useCallback(async () => {
     try {
       const res = await api.getFriendRequests();
-      setFriendRequests(res.data.friendRequests ?? []);
+      setFriendRequests(
+        (res.data.friendRequests ?? []).filter(isValidUser) as User[],
+      );
     } catch {
       /* silent */
     }
@@ -78,7 +81,7 @@ export const useFriendService = () => {
       setIsSearching(true);
       try {
         const res = await api.searchUsers(q);
-        return res.data.users ?? [];
+        return (res.data.users ?? []).filter(isValidUser) as User[];
       } catch {
         return [];
       } finally {

@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import type { Conversation, Message } from "@/types";
+import type { Conversation, Message, User } from "@/types";
+import { isValidUser } from "@/utils/user.utils";
 
 interface ConversationState {
   // Key là _id của conversation
@@ -20,10 +21,22 @@ interface ConversationState {
   bumpConversation: (msg: Message, newUnreadCount?: number) => void;
   markAsRead: (id: string) => void;
   updateSeen: (cid: string, userId: string, lastRead?: Date) => void;
-  getParticipantUser: (cid: string, userId: string) => any;
+  getParticipantUser: (cid: string, userId: string) => User | null;
 }
 
-export const useConversationStore = create<ConversationState>((set) => ({
+const isValidConversation = (conversation: unknown): conversation is Conversation =>
+  !!conversation &&
+  typeof conversation === "object" &&
+  typeof (conversation as { _id?: unknown })._id === "string";
+
+const normalizeConversation = (conversation: Conversation): Conversation => ({
+  ...conversation,
+  participants: (conversation.participants ?? []).filter(
+    (participant) => participant && isValidUser(participant.user),
+  ),
+});
+
+export const useConversationStore = create<ConversationState>((set, get) => ({
   conversations: new Map(),
   convCursor: { cursor: null, lastId: null },
   activeId: null,
@@ -34,19 +47,26 @@ export const useConversationStore = create<ConversationState>((set) => ({
   // Khởi tạo Map từ Array
   setConversations: (conversations) => {
     const map = new Map();
-    conversations.forEach((c) => map.set(c._id, c));
+    conversations
+      .filter(isValidConversation)
+      .map(normalizeConversation)
+      .forEach((c) => map.set(c._id, c));
     set({ conversations: map });
   },
 
   // Thêm một hội thoại mới lên đầu Map
   addConversation: (c) =>
     set((s) => {
+      if (!isValidConversation(c)) return s;
+      const nextConversation = normalizeConversation(c);
       const newMap = new Map(s.conversations);
-      if (newMap.has(c._id)) newMap.delete(c._id);
+      if (newMap.has(nextConversation._id)) newMap.delete(nextConversation._id);
 
       // Để render theo thứ tự mới nhất lên đầu,
       // ta tạo Map mới: [Key mới, ...Map cũ]
-      return { conversations: new Map([[c._id, c], ...newMap]) };
+      return {
+        conversations: new Map([[nextConversation._id, nextConversation], ...newMap]),
+      };
     }),
 
   updateConversation: (id, d) =>
@@ -54,7 +74,7 @@ export const useConversationStore = create<ConversationState>((set) => ({
       const newMap = new Map(s.conversations);
       const target = newMap.get(id);
       if (target) {
-        newMap.set(id, { ...target, ...d });
+        newMap.set(id, normalizeConversation({ ...target, ...d }));
       }
       return { conversations: newMap };
     }),
@@ -71,7 +91,8 @@ export const useConversationStore = create<ConversationState>((set) => ({
       const cid =
         typeof msg.conversation === "string"
           ? msg.conversation
-          : (msg.conversation as any)._id;
+          : (msg.conversation as { _id?: string })?._id;
+      if (!cid) return s;
 
       const newMap = new Map(s.conversations);
       const targetConv = newMap.get(cid);
@@ -119,8 +140,8 @@ export const useConversationStore = create<ConversationState>((set) => ({
       if (!targetConv) return s;
 
       // 2. Cập nhật danh sách participants
-      const updatedParticipants = targetConv.participants.map((p) => {
-        if (p.user._id === userId) {
+      const updatedParticipants = (targetConv.participants ?? []).map((p) => {
+        if (p.user?._id === userId) {
           return {
             ...p,
             lastRead,
@@ -140,9 +161,9 @@ export const useConversationStore = create<ConversationState>((set) => ({
     }),
 
   getParticipantUser: (cid, userId) => {
-    const conv = useConversationStore.getState().conversations.get(cid);
+    const conv = get().conversations.get(cid);
     if (!conv) return null;
-    const participant = conv.participants.find((p) => p.user._id === userId);
+    const participant = (conv.participants ?? []).find((p) => p.user?._id === userId);
     return participant ? participant.user : null;
   },
 }));

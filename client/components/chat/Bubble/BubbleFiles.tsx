@@ -13,7 +13,7 @@ export default function BubbleFiles({
 }) {
   return (
     <div style={{ ...bubbleBase, padding: "10px 14px" }}>
-      {files.map((file) => (
+      {files.filter((file) => file?.url).map((file) => (
         <div key={file.url} className="flex items-center gap-3 mb-1 last:mb-0">
           <div
             className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0"
@@ -24,8 +24,10 @@ export default function BubbleFiles({
             <FileIcon className={`w-5 h-5 ${!isMe ? "text-primary" : "text-white"}`} />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium truncate max-w-40">{file.name}</p>
-            <p className="text-xs opacity-70">{fmtSize(file.size)}</p>
+            <p className="text-sm font-medium truncate max-w-40">
+              {file.name || "Untitled file"}
+            </p>
+            <p className="text-xs opacity-70">{fmtSize(file.size || 0)}</p>
           </div>
           <a
             href={file.url}

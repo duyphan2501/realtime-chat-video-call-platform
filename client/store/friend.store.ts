@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { User } from "@/types";
+import { isValidUser } from "@/utils/user.utils";
 
 interface FriendState {
   friendRequests: User[];
@@ -18,12 +19,15 @@ export const useFriendStore = create<FriendState>((set) => ({
   friendRequests: [],
   friends: [],
 
-  setFriendRequests: (users) => set({ friendRequests: users }),
+  setFriendRequests: (users) =>
+    set({ friendRequests: users.filter(isValidUser) as User[] }),
 
   addFriendRequest: (user) =>
     set((s) => ({
       // Tránh trùng lặp
-      friendRequests: s.friendRequests.find((u) => u._id === user._id)
+      friendRequests: !isValidUser(user)
+        ? s.friendRequests
+        : s.friendRequests.find((u) => u._id === user._id)
         ? s.friendRequests
         : [user, ...s.friendRequests],
     })),
@@ -33,11 +37,11 @@ export const useFriendStore = create<FriendState>((set) => ({
       friendRequests: s.friendRequests.filter((u) => u._id !== id),
     })),
 
-  setFriends: (users) => set({ friends: users }),
+  setFriends: (users) => set({ friends: users.filter(isValidUser) as User[] }),
 
   appendNewFriend: (user) =>
     set((s) => ({
-      friends: [...s.friends, user],
+      friends: isValidUser(user) ? [...s.friends, user] : s.friends,
     })),
 
   removeFriend: (userId) =>

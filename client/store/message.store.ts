@@ -40,6 +40,11 @@ interface MessageState {
 
 const MAX_CONVERSATIONS_IN_RAM = 5; // Limit number of conversations stored in RAM
 
+const isValidMessage = (message: unknown): message is Message =>
+  !!message &&
+  typeof message === "object" &&
+  typeof (message as { _id?: unknown })._id === "string";
+
 export const useMessageStore = create<MessageState>((set) => ({
   messages: {},
   meta: {},
@@ -50,8 +55,8 @@ export const useMessageStore = create<MessageState>((set) => ({
   setMessages: (cid, msgs, hasMore, nextCursor) =>
     set((s) => {
       const newOrder = [cid, ...s.activeOrder.filter((id) => id !== cid)];
-      let newMessages = { ...s.messages, [cid]: msgs };
-      let newMeta = { ...s.meta, [cid]: { hasMore, nextCursor } };
+      const newMessages = { ...s.messages, [cid]: msgs.filter(isValidMessage) };
+      const newMeta = { ...s.meta, [cid]: { hasMore, nextCursor } };
       let finalOrder = newOrder;
 
       // Tự động dọn dẹp nếu vượt quá giới hạn
@@ -70,7 +75,10 @@ export const useMessageStore = create<MessageState>((set) => ({
     set((s) => ({
       messages: {
         ...s.messages,
-        [cid]: [...msgs.reverse(), ...(s.messages[cid] || [])], // Old messages inserted at the beginning
+        [cid]: [
+          ...msgs.filter(isValidMessage).reverse(),
+          ...(s.messages[cid] || []),
+        ], // Old messages inserted at the beginning
       },
       meta: {
         ...s.meta,
@@ -81,10 +89,12 @@ export const useMessageStore = create<MessageState>((set) => ({
   // 3. Receive new message (real-time or sent)
   addMessage: (msg) =>
     set((s) => {
+      if (!isValidMessage(msg)) return s;
       const cid =
         typeof msg.conversation === "string"
           ? msg.conversation
-          : (msg.conversation as any)._id;
+          : (msg.conversation as { _id?: string })?._id;
+      if (!cid) return s;
       const currentMsgs = s.messages[cid] || [];
 
       // Avoid duplicates (if socket sends back message just sent)

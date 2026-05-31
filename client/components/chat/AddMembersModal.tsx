@@ -5,7 +5,7 @@ import { Conversation, User } from "@/types";
 import { useSearchFriends, useConversationService } from "@/services";
 import useDebounce from "@/hooks/useDebounce";
 import { Loader2, X } from "lucide-react";
-import { getAvatar } from "@/utils/user.utils";
+import { getAvatar, getUserName, isValidUser } from "@/utils/user.utils";
 import SearchBar from "../contacts/SearchBar";
 
 interface AddMembersModalProps {
@@ -25,8 +25,12 @@ export default function AddMembersModal({
   const { addMembers, isAddingMembers } = useConversationService();
 
   // Filter out friends who are already in the group
-  const existingIds = new Set(conversation.participants.map((p) => p.user._id));
-  const availableFriends = friends.filter((f: User) => !existingIds.has(f._id));
+  const existingIds = new Set(
+    (conversation.participants ?? []).map((p) => p.user?._id),
+  );
+  const availableFriends = friends
+    .filter(isValidUser)
+    .filter((f: User) => !existingIds.has(f._id));
 
   const toggle = (u: User) =>
     setSelected((prev) =>
@@ -112,10 +116,10 @@ export default function AddMembersModal({
                   >
                     <img
                       src={getAvatar(u)}
-                      alt={u.name}
+                      alt={getUserName(u)}
                       className="w-6 h-6 rounded-full object-cover"
                     />
-                    <span>{u.name}</span>
+                    <span>{getUserName(u)}</span>
                     <button
                       onClick={() => toggle(u)}
                       className="hover:text-white transition-colors"
@@ -153,12 +157,12 @@ export default function AddMembersModal({
                     <img
                       src={getAvatar(f)}
                       className="w-10 h-10 rounded-full object-cover border border-white/10"
-                      alt={f.name}
+                      alt={getUserName(f)}
                     />
 
                     <div className="flex-1">
                       <span className="text-sm font-semibold text-white/90 group-hover:text-white">
-                        {f.name}
+                        {getUserName(f)}
                       </span>
                     </div>
                   </label>

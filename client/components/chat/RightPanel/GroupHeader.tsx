@@ -72,7 +72,7 @@ export default function GroupHeader({
       </h3>
       {isGroup && (
         <p className="text-primary text-sm font-semibold mt-1">
-          {conversation.participants.length} Members
+          {conversation.participants?.length || 0} Members
         </p>
       )}
       {isGroup ? (

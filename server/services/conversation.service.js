@@ -213,7 +213,7 @@ export const ConversationService = {
     }
 
     const userParticipant = conversation.participants.find(
-      (p) => p.user.toString() === userId.toString(),
+      (p) => p.user?.toString() === userId.toString(),
     );
 
     if (
@@ -248,7 +248,7 @@ export const ConversationService = {
     }
 
     const userParticipant = conversation.participants.find(
-      (p) => p.user.toString() === userId.toString(),
+      (p) => p.user?.toString() === userId.toString(),
     );
 
     if (
@@ -260,7 +260,7 @@ export const ConversationService = {
 
     // Check if member already exists
     const memberExists = conversation.participants.some(
-      (p) => p.user.toString() === newMemberId.toString(),
+      (p) => p.user?.toString() === newMemberId.toString(),
     );
 
     if (memberExists) {
@@ -319,7 +319,7 @@ export const ConversationService = {
     }
 
     const userParticipant = conversation.participants.find(
-      (p) => p.user.toString() === userId.toString(),
+      (p) => p.user?.toString() === userId.toString(),
     );
 
     if (
@@ -370,7 +370,7 @@ export const ConversationService = {
     }
 
     const requester = conversation.participants.find(
-      (p) => p.user.toString() === requestUserId.toString(),
+      (p) => p.user?.toString() === requestUserId.toString(),
     );
 
     if (!requester || requester.role !== "owner") {
@@ -417,7 +417,7 @@ export const ConversationService = {
     }
 
     const requester = conversation.participants.find(
-      (p) => p.user.toString() === requestUserId.toString(),
+      (p) => p.user?.toString() === requestUserId.toString(),
     );
 
     if (!requester || requester.role !== "owner") {
@@ -463,7 +463,7 @@ export const ConversationService = {
     }
 
     const userParticipant = conversation.participants.find(
-      (p) => p.user.toString() === userId.toString(),
+      (p) => p.user?.toString() === userId.toString(),
     );
 
     if (!userParticipant) {
@@ -486,7 +486,7 @@ export const ConversationService = {
       }
       // Check if newOwnerId is a member
       const newOwnerParticipant = conversation.participants.find(
-        (p) => p.user.toString() === newOwnerId.toString(),
+        (p) => p.user?.toString() === newOwnerId.toString(),
       );
       if (!newOwnerParticipant) {
         throw createHttpError(
@@ -541,7 +541,7 @@ export const ConversationService = {
     }
 
     const userParticipant = conversation.participants.find(
-      (p) => p.user.toString() === userId.toString(),
+      (p) => p.user?.toString() === userId.toString(),
     );
 
     if (!userParticipant || userParticipant.role !== "owner") {

@@ -19,8 +19,11 @@ export default function SharedMediaAccordion({
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // 2. Flatten dữ liệu từ các trang thành một mảng phẳng để dễ map
-  const allMedia = data?.pages.flatMap((page) => page.data) || [];
-  const images = allMedia.map(item => item.file)
+  const allMedia =
+    data?.pages
+      .flatMap((page) => page.data)
+      .filter((item: any) => item?.file?.url) || [];
+  const images = allMedia.map((item: any) => item.file);
 
   // 3. Tính toán số lượng còn lại cho nút hiển thị
   const totalItems = data?.pages[0]?.total || 0;
@@ -43,12 +46,12 @@ export default function SharedMediaAccordion({
           {/* Render danh sách ảnh từ API */}
           {allMedia.map((item: any, index: number) => (
             <div
-              key={item.file.url+index || index}
+              key={`${item.file.url}-${index}`}
               className="aspect-square rounded-lg bg-cover bg-center bg-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
               style={{ backgroundImage: `url("${item.file.url}")` }}
               role="img"
-              aria-label={item.file.name}
-              title={item.file.name}
+              aria-label={item.file.name || "Shared media"}
+              title={item.file.name || "Shared media"}
               onClick={() => setLightboxIndex(index)}
             />
           ))}

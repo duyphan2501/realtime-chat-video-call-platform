@@ -34,7 +34,10 @@ export default function DocumentsAccordion({ conversationId }: DocumentsAccordio
   } = useGetInfiniteSharedContent(conversationId, "file");
 
   // 2. Flatten dữ liệu
-  const allFiles = data?.pages.flatMap((page) => page.data) || [];
+  const allFiles =
+    data?.pages
+      .flatMap((page) => page.data)
+      .filter((item: any) => item?.file?.url) || [];
   const totalFiles = data?.pages[0]?.total || 0;
 
   return (
@@ -47,11 +50,13 @@ export default function DocumentsAccordion({ conversationId }: DocumentsAccordio
         ) : (
           allFiles.map((item: any, idx: number) => {
             const doc = item.file; // Dữ liệu file từ Backend
-            const fileConfig = FILE_ICONS[doc.format.toLowerCase()] || FILE_ICONS.default;
+            const fileConfig =
+              FILE_ICONS[doc.format?.toLowerCase?.() || "default"] ||
+              FILE_ICONS.default;
 
             return (
               <div
-                key={doc.url+idx || idx}
+                key={`${doc.url}-${idx}`}
                 className="flex items-center gap-3 group/doc cursor-pointer"
                 onClick={() => window.open(doc.url, "_blank")} // Mở file trong tab mới
               >
@@ -67,10 +72,10 @@ export default function DocumentsAccordion({ conversationId }: DocumentsAccordio
                 {/* File Info */}
                 <div className="flex flex-col min-w-0 flex-1">
                   <p className="text-sm font-medium truncate text-slate-700 group-hover/doc:text-primary transition-colors">
-                    {doc.name}
+                    {doc.name || "Untitled file"}
                   </p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    {fmtSize(doc.size)} • {new Date(item.createdAt).toLocaleDateString()}
+                    {fmtSize(doc.size || 0)} • {new Date(item.createdAt).toLocaleDateString()}
                   </p>
                 </div>
               </div>

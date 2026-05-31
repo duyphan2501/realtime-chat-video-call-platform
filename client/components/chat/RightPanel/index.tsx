@@ -38,12 +38,12 @@ export default function RightPanel({ conversationId, onClose }: Props) {
   const isGroup = conversation?.type === "group";
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin =
-    conversation?.participants.some(
-      (p) => p.user._id === currentUser?._id && p.role === "admin",
+    conversation?.participants?.some(
+      (p) => p.user?._id === currentUser?._id && p.role === "admin",
     ) || false;
   const isOwner =
-    conversation?.participants.some(
-      (p) => p.user._id === currentUser?._id && p.role === "owner",
+    conversation?.participants?.some(
+      (p) => p.user?._id === currentUser?._id && p.role === "owner",
     ) || false;
 
   const handleLeaveGroupClick = () => {
@@ -57,8 +57,9 @@ export default function RightPanel({ conversationId, onClose }: Props) {
   };
 
   const handleLeaveGroupWithNewOwner = async (newOwnerId: string) => {
+    if (!conversation) return;
     try {
-      await leaveGroup({ conversationId: conversation!._id, newOwnerId });
+      await leaveGroup({ conversationId: conversation._id, newOwnerId });
       router.push("/");
       onClose();
       setShowSelectOwner(false);
@@ -68,8 +69,9 @@ export default function RightPanel({ conversationId, onClose }: Props) {
   };
 
   const handleLeaveGroup = async () => {
+    if (!conversation) return;
     try {
-      await leaveGroup({ conversationId: conversation!._id });
+      await leaveGroup({ conversationId: conversation._id });
       router.push("/");
       onClose();
     } catch (error) {
@@ -80,8 +82,9 @@ export default function RightPanel({ conversationId, onClose }: Props) {
   };
 
   const handleDisbandGroup = async () => {
+    if (!conversation) return;
     try {
-      await disbandGroup(conversation!._id);
+      await disbandGroup(conversation._id);
       router.push("/");
       onClose();
     } catch (error) {

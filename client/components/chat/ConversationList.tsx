@@ -35,6 +35,7 @@ export default function ConversationList({
     setActiveId(conId);
     markAsRead(conId);
   };
+  const safeConversations = conversations.filter((c) => c?._id);
 
   useEffect(() => {
     getConversations({
@@ -121,7 +122,7 @@ export default function ConversationList({
               <ConversationSkeleton key={i} />
             ))}
           </>
-        ) : conversations.length === 0 ? (
+        ) : safeConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 gap-2">
             <span className="text-2xl">💬</span>
             <p className="text-sm" style={{ color: "var(--color-ink-4)" }}>
@@ -130,7 +131,7 @@ export default function ConversationList({
           </div>
         ) : (
           <>
-            {conversations.map((c) => {
+            {safeConversations.map((c) => {
               const isActive = c._id === activeId;
               return (
                 <ConversationItem

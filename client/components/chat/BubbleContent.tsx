@@ -24,9 +24,10 @@ export default function BubbleContent({
     width: "fit-content",
   };
 
-  const imgs = m.attachments?.filter((a) => a.type?.startsWith("image/")) ?? [];
+  const attachments = m.attachments?.filter((a) => a?.url) ?? [];
+  const imgs = attachments.filter((a) => a.type?.startsWith("image/"));
   const files =
-    m.attachments?.filter((a) => !a.type?.startsWith("image/")) ?? [];
+    attachments.filter((a) => !a.type?.startsWith("image/")) ?? [];
 
   return (
     <>

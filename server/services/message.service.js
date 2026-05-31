@@ -73,7 +73,7 @@ const sendMessage = async ({
   // 3. Gửi Socket thông minh hơn
   // Thay vì broadcast chung chung, ta cần gửi unread riêng biệt cho từng người
   updatedConv.participants.forEach((p) => {
-    const participantId = p.user.toString();
+    const participantId = p.user?.toString();
     const room = `user_${participantId}`;
     if (room) {
       io.to(room).emit("message:new", {

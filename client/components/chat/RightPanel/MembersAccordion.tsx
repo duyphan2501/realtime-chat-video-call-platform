@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Accordion from "./Accordion";
 import { Conversation, Participant, User } from "@/types";
 import { Ellipsis, Search, Users } from "lucide-react";
-import { getAvatar } from "@/utils/user.utils";
+import { getAvatar, getUserName, isValidUser } from "@/utils/user.utils";
 import { useAuthStore, useConversationStore } from "@/store";
 import { useConversationService } from "@/services";
 import ProfileModal from "../../layout/ProfileModal";
@@ -103,8 +103,8 @@ export default function MembersAccordion({
       {
         label: "View Profile",
         onClick: (userId: string) => {
-          const user = conversation.participants.find(
-            (p) => p.user._id === userId,
+          const user = (conversation.participants ?? []).find(
+            (p) => p.user?._id === userId,
           )?.user;
           if (user) handleViewProfile(user);
         },
@@ -126,11 +126,20 @@ export default function MembersAccordion({
     return list.filter((action) => !action.requireAdmin || isAdmin);
   }, [conversation, currentUser, isAdmin]);
 
+  const validParticipants = useMemo(
+    () =>
+      (conversation.participants ?? []).filter(
+        (participant) => participant && isValidUser(participant.user),
+      ),
+    [conversation.participants],
+  );
+
   const filteredMembers = useMemo(() => {
-    return conversation.participants.filter((p) =>
-      p.user.name.toLowerCase().includes(query.toLowerCase()),
+    const normalizedQuery = query.toLowerCase();
+    return validParticipants.filter((p) =>
+      getUserName(p.user).toLowerCase().includes(normalizedQuery),
     );
-  }, [conversation.participants, query]);
+  }, [validParticipants, query]);
 
   const handleToggleActions = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -151,7 +160,7 @@ export default function MembersAccordion({
     <>
       <Accordion
         icon={<Users />}
-        title={`Members (${conversation.participants.length})`}
+        title={`Members (${validParticipants.length})`}
         defaultOpen
       >
         <div className="px-4 pb-4">
@@ -170,24 +179,26 @@ export default function MembersAccordion({
           <div className="flex flex-col gap-1">
             {filteredMembers.map((participant) => {
               const badge = ROLE_BADGE[participant.role];
-              const isMe = participant.user._id === currentUser?._id;
+              const user = participant.user;
+              const userName = getUserName(user);
+              const isMe = user._id === currentUser?._id;
 
               return (
                 <div
-                  key={participant.user._id}
+                  key={user._id}
                   className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-[#1c1c2d] transition-colors group/item"
                 >
                   <div
                     className="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-10 w-10 shadow-sm"
                     style={{
-                      backgroundImage: `url("${getAvatar(participant.user)}")`,
+                      backgroundImage: `url("${getAvatar(user)}")`,
                     }}
                   />
 
                   <div className="flex flex-col flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium">
-                        {participant.user.name}{" "}
+                        {userName}{" "}
                         {isMe && <span className="text-slate-500">(You)</span>}
                       </p>
                       {badge && (
@@ -206,24 +217,24 @@ export default function MembersAccordion({
                       <button
                         className="text-slate-300 p-1 rounded-full hover:bg-gray active:bg-gray/80 transition-all"
                         onClick={(e) =>
-                          handleToggleActions(e, participant.user._id)
+                          handleToggleActions(e, user._id)
                         }
                       >
                         <Ellipsis size={20} />
                       </button>
 
-                      {showActions === participant.user._id && (
+                      {showActions === user._id && (
                         <div className="absolute right-0 top-full mt-1 w-44 bg-[#252539] border border-white/5 rounded-lg shadow-xl py-1 z-50 overflow-hidden">
                           {actions.map((action) => (
                             <button
                               key={action.label}
-                              disabled={isLoading(participant.user._id)}
+                              disabled={isLoading(user._id)}
                               onClick={() =>
-                                action.onClick(participant.user._id)
+                                action.onClick(user._id)
                               }
                               className="w-full text-left px-4 py-2.5 text-sm hover:bg-primary/20 transition-colors disabled:opacity-50"
                             >
-                              {isLoading(participant.user._id)
+                              {isLoading(user._id)
                                 ? "Processing..."
                                 : action.label}
                             </button>

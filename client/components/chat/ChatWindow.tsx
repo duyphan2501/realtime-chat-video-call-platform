@@ -22,7 +22,7 @@ import { Info, Phone, Search, Video } from "lucide-react";
 import IconBtn from "../IconBtn";
 import { useConversationService, useMessageService } from "@/services";
 import RightPanel from "./RightPanel";
-import { getAvatar } from "@/utils/user.utils";
+import { getAvatar, getUserName } from "@/utils/user.utils";
 import { useChatScroll } from "@/hooks/useChatScroll";
 
 interface Props {
@@ -176,9 +176,9 @@ export default function ChatWindow({
   /* ── Header info ─────────────────────────────── */
   const isGroup = conv.type === "group";
   const other = isGroup ? null : conv.otherUser;
-  const headerName = isGroup ? conv.name : other?.name;
+  const headerName = isGroup ? conv.name || "Group Chat" : getUserName(other);
   const headerAvatar = isGroup ? conv.avatar : other?.avatar;
-  const memberCount = conv.participants.length;
+  const memberCount = conv.participants?.length || 0;
 
   const otherUserId = other?._id;
   const isOtherOnlineRaw = usePresenceStore((s) =>
@@ -272,13 +272,14 @@ export default function ChatWindow({
             </div>
           )}
 
-          {messages.map((msg, i) => {
-            const isMe = msg.sender._id === currentUser._id;
-            const prev = messages[i - 1];
+          {messages.filter(Boolean).map((msg, i, visibleMessages) => {
+            const senderId = msg.sender?._id || "";
+            const isMe = senderId === currentUser._id;
+            const prev = visibleMessages[i - 1];
             const isSameSenderAsPrev =
               prev &&
               prev.type !== "system" &&
-              prev?.sender._id === msg.sender._id;
+              prev?.sender?._id === senderId;
             const shouldShowAvatar = !isMe && !isSameSenderAsPrev;
             const showDate = !prev || !sameDay(prev.createdAt, msg.createdAt);
             const isLast = i === messages.length - 1;

@@ -3,7 +3,7 @@ import type { User } from "@/types";
 import { usePresenceStore } from "@/store";
 import { MessageSquare, Phone, MoreVertical } from "lucide-react";
 import { useState } from "react";
-import { getAvatar } from "@/utils/user.utils";
+import { getAvatar, getUserName } from "@/utils/user.utils";
 
 interface ContactRowProps {
   user: User;
@@ -19,10 +19,11 @@ export default function ContactRow({
   onStartChat,
 }: ContactRowProps) {
   const isOnline = usePresenceStore((s) => s.isOnline);
-  const online = isOnline(user._id);
+  const online = isOnline(user?._id || "");
   const [showMenu, setShowMenu] = useState(false);
 
-  const avatarUrl =getAvatar(user); 
+  const displayName = getUserName(user);
+  const avatarUrl = getAvatar(user);
 
   return (
     <div
@@ -37,7 +38,7 @@ export default function ContactRow({
         <div className="relative">
           <img
             src={avatarUrl}
-            alt={user.name}
+            alt={displayName}
             className="h-12 w-12 rounded-full object-cover"
           />
           <div
@@ -51,9 +52,9 @@ export default function ContactRow({
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-sm text-white">
-              {user.name}
+              {displayName}
             </span>
-            {user.email && (
+            {user?.email && (
               <span className="text-xs text-slate-300">
                 @{user.email.split("@")[0]}
               </span>
@@ -70,7 +71,7 @@ export default function ContactRow({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onStartChat(user._id);
+            if (user?._id) onStartChat(user._id);
           }}
           className="p-2 rounded-full bg-slate-800 text-slate-300 hover:text-primary transition-colors"
           title="Chat"

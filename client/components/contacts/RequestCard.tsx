@@ -1,6 +1,6 @@
 "use client";
 import type { User } from "@/types";
-import { getAvatar } from "@/utils/user.utils";
+import { getAvatar, getUserName } from "@/utils/user.utils";
 import { Check, X } from "lucide-react";
 
 interface RequestCardProps {
@@ -19,6 +19,7 @@ export default function RequestCard({
   onClick,
 }: RequestCardProps) {
   const avatarUrl = getAvatar(user);
+  const displayName = getUserName(user);
   const isSentRequest = user.friendStatus === "sent";
   return (
     <div
@@ -28,14 +29,16 @@ export default function RequestCard({
       {/* Avatar */}
       <img
         src={avatarUrl}
-        alt={user.name}
+        alt={displayName}
         className="h-12 w-12 rounded-full object-cover shrink-0"
       />
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm text-white truncate">{user.name}</p>
-        <p className="text-xs text-slate-500 truncate">{user.email}</p>
+        <p className="font-semibold text-sm text-white truncate">
+          {displayName}
+        </p>
+        <p className="text-xs text-slate-500 truncate">{user.email || ""}</p>
 
         {/* Action buttons */}
         <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>

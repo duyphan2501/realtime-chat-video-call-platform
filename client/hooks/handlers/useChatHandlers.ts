@@ -7,6 +7,7 @@ export function useChatHandlers(socket: Socket | null) {
     if (!socket) return;
 
     const onMessageNew = (data: any) => {
+      if (!data?.newMessage?._id) return;
       const { addMessage } = useMessageStore.getState();
       addMessage(data.newMessage);
       useConversationStore
@@ -14,12 +15,13 @@ export function useChatHandlers(socket: Socket | null) {
         .bumpConversation(data.newMessage, data.unreadCount);
 
       const isMe =
-        useAuthStore.getState().user?._id === data.newMessage.sender._id;
+        useAuthStore.getState().user?._id === data.newMessage.sender?._id;
 
       if (data.newMessage.type === "system" || isMe) return;
+      if (!data.newMessage.sender?._id) return;
       socket.emit("message:received", {
         messageId: data.newMessage._id,
-        senderId: data.newMessage.sender._id,
+        senderId: data.newMessage.sender?._id,
         conversationId: data.newMessage.conversation,
         tempId: data.newMessage.tempId,
       });

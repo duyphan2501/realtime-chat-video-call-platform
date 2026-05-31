@@ -12,6 +12,7 @@ import RequestCard from "./RequestCard";
 import SearchResultRow from "./SearchResultRow";
 import ContactSkeleton from "./ContactSkeleton";
 import { usePresenceStore } from "@/store";
+import { isValidUser } from "@/utils/user.utils";
 
 type TabId = "all" | "online" | "pending" | "blocked";
 
@@ -48,14 +49,22 @@ export default function ContactList({
   } = useFriendService();
 
   const onlineUsers = usePresenceStore((s) => s.onlineUsers);
+  const safeFriends = useMemo(
+    () => friends.filter(isValidUser) as User[],
+    [friends],
+  );
+  const safeFriendRequests = useMemo(
+    () => friendRequests.filter(isValidUser) as User[],
+    [friendRequests],
+  );
 
   // Tính toán lại danh sách dựa trên onlineUsers
   // Memoize lại để tránh tính toán thừa khi các state khác (như query) thay đổi
   const { online: onlineFriends, offline: offlineFriends } = useMemo(() => {
-    const online = friends.filter((f) => isOnline(f._id));
-    const offline = friends.filter((f) => !isOnline(f._id));
+    const online = safeFriends.filter((f) => isOnline(f._id));
+    const offline = safeFriends.filter((f) => !isOnline(f._id));
     return { online, offline };
-  }, [friends, onlineUsers]);
+  }, [safeFriends, onlineUsers, isOnline]);
 
   console.log("Online Count:", onlineFriends.length);
   console.log("Online Data:", onlineUsers);
@@ -137,7 +146,9 @@ export default function ContactList({
           }`}
         >
           All Friends
-          <span className="ml-2 text-xs text-slate-400">{friends.length}</span>
+          <span className="ml-2 text-xs text-slate-400">
+            {safeFriends.length}
+          </span>
         </button>
         <button
           onClick={() => setTab("online")}
@@ -161,9 +172,9 @@ export default function ContactList({
           }`}
         >
           Pending
-          {friendRequests.length > 0 && (
+          {safeFriendRequests.length > 0 && (
             <span className="ml-2 bg-primary px-1.5 py-0.5 rounded text-[10px] text-white">
-              {friendRequests.length}
+              {safeFriendRequests.length}
             </span>
           )}
         </button>
@@ -177,7 +188,7 @@ export default function ContactList({
             <>
               {isLoadingFriends ? (
                 <ContactSkeleton />
-              ) : friends.length === 0 ? (
+              ) : safeFriends.length === 0 ? (
                 <EmptyState icon="👥" text="No friends yet. Start adding!" />
               ) : (
                 <>
@@ -239,11 +250,11 @@ export default function ContactList({
           {/* Pending Tab */}
           {tab === "pending" && (
             <>
-              {friendRequests.length === 0 ? (
+              {safeFriendRequests.length === 0 ? (
                 <EmptyState icon="💌" text="No pending friend requests" />
               ) : (
                 <div className="flex flex-col gap-2 pt-2">
-                  {friendRequests.map((user) => (
+                  {safeFriendRequests.map((user) => (
                     <RequestCard
                       key={user._id}
                       user={user}

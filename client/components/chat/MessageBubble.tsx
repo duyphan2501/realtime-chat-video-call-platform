@@ -7,7 +7,7 @@ import { Loader } from "lucide-react";
 import RevokedBubble from "./RevokedBubble";
 import SystemMsg from "./SystemMsg";
 import CallMessage from "./CallMessage";
-import { getAvatar } from "@/utils/user.utils";
+import { getAvatar, getUserName } from "@/utils/user.utils";
 
 interface Props {
   message: Message;
@@ -31,6 +31,7 @@ export default function MessageBubble({
   onStartCall,
 }: Props) {
   const conv = useConversationStore((s) => s.conversations.get(convId));
+  const senderName = getUserName(m.sender);
   if (m.type === "system") {
     return <SystemMsg text={m.content || ""} />;
   }
@@ -46,7 +47,7 @@ export default function MessageBubble({
         {showAvatar && !isMe && (
           <img
             src={getAvatar(m.sender as User)}
-            alt={m.sender.name}
+            alt={senderName}
             className="w-8 h-8 rounded-full object-cover bg-gray-300"
           />
         )}
@@ -58,7 +59,7 @@ export default function MessageBubble({
         {/* Sender name in group */}
         {isGroup && !isMe && showAvatar && (
           <span className="text-xs font-semibold mb-1 px-1 text-white!">
-            {m.sender.name}
+            {senderName}
           </span>
         )}
 
@@ -99,7 +100,7 @@ export default function MessageBubble({
                       // 1. Lấy danh sách những người (không phải mình) đã đọc đến tin nhắn này
                       const seenUsers =
                         conv?.participants.filter((p) => {
-                          const isNotMe = p.user._id !== currentUserId;
+                          const isNotMe = p.user?._id !== currentUserId;
                           const hasReadThis =
                             new Date(p.lastRead) >= new Date(m.createdAt);
 
@@ -111,16 +112,16 @@ export default function MessageBubble({
                           <>
                             <div className="flex -space-x-1.5 items-center">
                               {seenUsers.slice(-3).map((p) => {
-                                if (m.sender._id === p.user._id) {
+                                if (m.sender?._id === p.user?._id) {
                                   return null; // Không hiển thị avatar của người gửi nếu họ đã đọc tin nhắn của chính mình
                                 }
                                 return (
                                   <img
-                                    key={p.user._id}
+                                    key={p.user?._id}
                                     src={getAvatar(p.user)}
                                     alt="seen"
                                     className="w-4 h-4 rounded-full object-cover"
-                                    title={`Seen by ${p.user.name} at ${fmtTime(p.lastRead)}`}
+                                    title={`Seen by ${p.user?.name} at ${fmtTime(p.lastRead)}`}
                                   />
                                 );
                               })}
