@@ -32,6 +32,9 @@ const server = http.createServer(app);
 await connectRedis();
 initSocket(server, ENV.CLIENT_URL);
 
+app.get("/ping", (req, res) => {
+  res.status(200).send("ok");
+});
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/conversations", conversationRouter);

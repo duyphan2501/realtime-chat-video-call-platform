@@ -1,11 +1,10 @@
 import { createClient } from "redis";
 import ENV from "../utils/env.util.js";
 
-const redisUrl = `redis://${ENV.REDIS_USERNAME}@${ENV.REDIS_HOST}:${ENV.REDIS_PORT}`;
+const redisUrl = `redis://${ENV.REDIS_USERNAME}:${ENV.REDIS_PASSWORD}@${ENV.REDIS_HOST}:${ENV.REDIS_PORT}`;
 
 const redisConfig = {
   url: redisUrl,
-  password: ENV.REDIS_PASSWORD,
 };
 
 const redisClient = createClient(redisConfig);
@@ -40,9 +39,9 @@ const clearRedisOnStart = async () => {
 
     for (const pattern of patterns) {
       const keys = await redisClient.keys(pattern);
-      
+
       if (keys && keys.length > 0) {
-        await redisClient.del(keys); 
+        await redisClient.del(keys);
       }
     }
 
