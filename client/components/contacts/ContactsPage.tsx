@@ -73,12 +73,12 @@ export default function ContactsPage() {
               Contacts
             </h2>
             <div className="h-6 w-px  bg-slate-700" />
-            <p className="text-sm text-slate-300">{friends.length} friends</p>
+            <p className="text-sm hidden sm:block text-slate-300">{friends.length} friends</p>
           </div>
 
           <button
             onClick={() => setShowAddFriendModal(true)}
-            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors"
+            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors text-nowrap"
           >
             <UserPlus className="w-4 h-4" />
             Add Friend

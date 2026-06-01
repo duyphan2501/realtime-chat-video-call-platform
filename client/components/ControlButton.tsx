@@ -23,7 +23,7 @@ export default function ControlButton({
 
   // Group common classes in one place for cleanliness
   const baseStyles =
-    "relative flex items-center justify-center h-12 w-12 rounded-2xl border transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 active:scale-95";
+    "relative flex items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-2xl border transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 active:scale-95";
   const disabledStyles = "opacity-40 cursor-not-allowed pointer-events-none";
 
   // Color logic
@@ -58,7 +58,7 @@ export default function ControlButton({
       {label && (
         <span
           className={`
-            text-[10px] font-semibold tracking-wide transition-colors uppercase
+            max-w-16 truncate text-[9px] sm:text-[10px] font-semibold tracking-wide transition-colors uppercase
             ${active && !isDanger ? "text-indigo-300/80" : "text-white/25 group-hover:text-white/50"}
           `}
         >

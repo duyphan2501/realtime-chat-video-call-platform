@@ -7,7 +7,6 @@ import {
   EyeOff,
   Lock,
   Mail,
-  RefreshCw,
 } from "lucide-react";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
@@ -86,8 +85,8 @@ const ForgotPasswordForm = ({ onBack }: Props) => {
   };
 
   return (
-    <div className="w-full max-w-110 shadow-xl">
-      <div className="bg-dark-secondary! rounded-xl shadow-xl overflow-hidden text-white p-8">
+    <div className="flex min-h-dvh w-full shadow-xl sm:min-h-0 sm:max-w-110">
+      <div className="flex min-h-dvh w-full flex-col justify-center overflow-hidden bg-dark-secondary! p-5 text-white shadow-xl sm:min-h-0 sm:rounded-xl sm:p-8">
         {/* Nút quay lại trang Đăng nhập */}
         <button
           onClick={handleBackClick}
@@ -140,7 +139,7 @@ const ForgotPasswordForm = ({ onBack }: Props) => {
           <section>
             <h4 className="text-xl font-bold subtitle mb-2">Verify Code</h4>
             <p className="text-sm mb-6 text-gray-400">
-              We've sent a 6-digit code to{" "}
+              We&apos;ve sent a 6-digit code to{" "}
               <span className="font-semibold text-white">{email}</span>.
             </p>
 
@@ -184,7 +183,7 @@ const ForgotPasswordForm = ({ onBack }: Props) => {
                 onClick={handleTryAgain}
                 className="text-sm text-gray-400 hover:text-white transition cursor-pointer"
               >
-                Didn't receive the code? Try again
+                Didn&apos;t receive the code? Try again
               </button>
             </div>
           </section>

@@ -66,7 +66,7 @@ export default function ConversationList({
   }, [socket, activeId]);
 
   return (
-    <div className="flex flex-col shrink-0 border-r w-[320px] border-gray-800">
+    <div className="flex h-dvh w-[calc(100dvw-3.5rem)] shrink-0 flex-col border-r border-gray-800 sm:w-[320px]">
       {/* Header */}
       <div className="px-4 pt-4">
         <div className="flex items-center justify-between mb-3">

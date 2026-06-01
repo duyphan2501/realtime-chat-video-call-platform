@@ -3,11 +3,11 @@ import AuthLeft from "@/components/auth/AuthLeft";
 
 const AuthPage = () => {
   return (
-    <div className="flex h-screen w-full overflow-hidden container">
-      <div className="flex-1 justify-center items-center ">
+    <div className="flex min-h-dvh w-full overflow-hidden bg-background">
+      <div className="hidden flex-1 items-center justify-center lg:flex">
         <AuthLeft />
       </div>
-      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 py-12">
+      <div className="flex min-h-dvh w-full flex-col items-stretch justify-stretch lg:w-1/2 lg:items-center lg:justify-center lg:px-6 lg:py-12">
         <AuthForm />
       </div>
     </div>

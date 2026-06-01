@@ -32,7 +32,7 @@ export default function BubbleContent({
   return (
     <>
       <div
-        className={`flex flex-col gap-1 ${isMe ? "items-end" : "items-start"}`}
+        className={`flex max-w-full flex-col gap-1 ${isMe ? "items-end" : "items-start"}`}
       >
         {imgs.length > 0 && (
           <BubbleImages imgs={imgs} onClickIndex={setLightboxIndex} />

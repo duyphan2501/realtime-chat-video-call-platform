@@ -36,6 +36,7 @@ export default function ChatPageClient() {
   }, [conversations, setActiveId]);
 
   const activeConv = activeId ? conversations.get(activeId) : null;
+  const hasActiveConversation = Boolean(activeConv && currentUser);
 
   const { startCall } = useWebRTC();
   const handleStartCall = useCallback(
@@ -49,19 +50,26 @@ export default function ChatPageClient() {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <ConversationList
-        conversations={Array.from(conversations.values())}
-        activeId={activeId}
-        currentUser={currentUser}
-        onCreateGroup={() => setShowCreate(true)}
-      />
-      <div className="flex flex-1 overflow-hidden">
+    <div className="flex h-dvh min-w-0 overflow-hidden">
+      <div
+        className={`shrink-0 ${hasActiveConversation ? "max-sm:hidden" : "max-sm:flex"}`}
+      >
+        <ConversationList
+          conversations={Array.from(conversations.values())}
+          activeId={activeId}
+          currentUser={currentUser}
+          onCreateGroup={() => setShowCreate(true)}
+        />
+      </div>
+      <div
+        className={`flex min-w-0 flex-1 overflow-hidden ${hasActiveConversation ? "" : "max-sm:hidden"}`}
+      >
         {activeConv && currentUser ? (
           <ChatWindow
             conversation={activeConv}
             currentUser={currentUser}
             onStartCall={handleStartCall}
+            onBack={() => setActiveId(null)}
           />
         ) : (
           <div className="flex flex-1 items-center justify-center">

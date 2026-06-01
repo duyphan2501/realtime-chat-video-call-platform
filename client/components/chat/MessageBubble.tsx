@@ -54,7 +54,7 @@ export default function MessageBubble({
       </div>
 
       <div
-        className={`flex flex-col max-w-[65%] ${isMe ? "items-end" : "items-start"}`}
+        className={`flex max-w-[75%] flex-col ${isMe ? "items-end" : "items-start"}`}
       >
         {/* Sender name in group */}
         {isGroup && !isMe && showAvatar && (
@@ -65,11 +65,11 @@ export default function MessageBubble({
 
         {/* Bubble + actions */}
         <div
-          className={`group relative flex gap-1 items-end ${isMe ? "flex-row-reverse" : "flex-row"}`}
+          className={`group relative flex max-w-full gap-1 items-end ${isMe ? "flex-row-reverse" : "flex-row"}`}
         >
           {/* Content bubble */}
-          <div>
-            <div className="relative">
+          <div className="max-w-full">
+            <div className="relative max-w-full">
               {m.isDeletedForAll ? (
                 <RevokedBubble isMe={isMe} />
               ) : m.type === "audio" || m.type === "video" ? (

@@ -2,14 +2,12 @@
 
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import React, { useState } from "react";
-import Link from "next/link";
 import GoogleButton from "./GoogleButton";
 import toast from "react-hot-toast";
 import IconLoading from "../loadings/IconLoading";
 import { useMyContext } from "@/context/MyContext";
 import { useAuthService } from "@/services";
 import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
-import AuthLeft from "@/components/auth/AuthLeft";
 
 const AuthForm = () => {
   const [tab, setTab] = useState(0);
@@ -32,7 +30,7 @@ const AuthForm = () => {
     verifyEmail,
     isRegistering,
     isVerifying,
-  } = useAuthService() as any;
+  } = useAuthService();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -87,8 +85,8 @@ const AuthForm = () => {
   }
 
   return (
-    <div className="w-full max-w-110 shadow-xl">
-      <div className="bg-dark-secondary! rounded-xl shadow-xl overflow-hidden text-white">
+    <div className="flex min-h-dvh w-full shadow-xl sm:min-h-0 sm:max-w-110">
+      <div className="flex min-h-dvh w-full flex-col overflow-hidden bg-dark-secondary! text-white shadow-xl sm:min-h-0 sm:rounded-xl">
         {step === "auth" ? (
           <>
             {/* Tabs */}
@@ -113,7 +111,7 @@ const AuthForm = () => {
             </div>
 
             {/* Auth Form */}
-            <section className="p-8">
+            <section className="flex flex-1 flex-col justify-center p-5 sm:block sm:p-8">
               <h4 className="text-xl font-bold subtitle mb-2">
                 {tab === 0 ? "Welcome Back" : "Create Account"}
               </h4>
@@ -123,7 +121,7 @@ const AuthForm = () => {
                   : "Sign up to get started"}
               </p>
 
-              <form className="space-y-5" onSubmit={handleSubmit}>
+              <form className="space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
                 {tab === 1 && (
                   <div>
                     <label className="text-sm font-semibold" htmlFor="name">
@@ -245,12 +243,12 @@ const AuthForm = () => {
           </>
         ) : (
           // Verification Step
-          <section className="p-8">
+          <section className="flex flex-1 flex-col justify-center p-5 sm:block sm:p-8">
             <h4 className="text-xl font-bold subtitle mb-2">
               Verify your email
             </h4>
             <p className="text-sm mb-6 text-gray-400">
-              We've sent a 6-digit verification code to{" "}
+              We&apos;ve sent a 6-digit verification code to{" "}
               <span className="font-semibold text-white">{email}</span>.
             </p>
 

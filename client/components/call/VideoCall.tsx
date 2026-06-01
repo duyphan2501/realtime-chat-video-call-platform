@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Video,
   ScreenShare,
@@ -13,8 +13,8 @@ import {
   Loader2,
 } from "lucide-react";
 import ControlButton from "@/components/ControlButton";
-import { useCallStore, useConversationStore, useSocketStore } from "@/store";
-import { useRingCountdown, useWebRTC } from "@/hooks";
+import { useCallStore } from "@/store";
+import { useRingCountdown } from "@/hooks";
 import ConnectingScreen from "./ConnectingScreen";
 import EndedScreen from "./EndedScreen";
 import { formatTime } from "@/utils/call.utils";
@@ -24,7 +24,6 @@ import { useCallService } from "@/services";
 export default function VideoCall() {
   // ── Store (reactive — use selector to only re-render when correct field changes)
   const status = useCallStore((s) => s.status);
-  const callType = useCallStore((s) => s.callType);
   const peerUser = useCallStore((s) => s.peerUser);
   const localStream = useCallStore((s) => s.localStream);
   const remoteStream = useCallStore((s) => s.remoteStream);
@@ -34,10 +33,6 @@ export default function VideoCall() {
   const toggleCam = useCallStore((s) => s.toggleCam);
   const startTime = useCallStore((s) => s.startTime);
 
-  // getState() — only use for values read in event handler (no need reactive)
-  const { endCall } = useWebRTC();
-  const socket = useSocketStore((s) => s.socket);
-
   const [duration, setDuration] = useState(0);
   const waitTimeLeft = useRingCountdown(30);
 
@@ -46,6 +41,33 @@ export default function VideoCall() {
   const endedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { endCall: endCallAPI, rejectCall } = useCallService();
+
+  const handleTerminateCall = useCallback(
+    async ({ reason = "ended" }: { reason: CallStatus }) => {
+      const { setStatus, reset, callType } = useCallStore.getState();
+
+      if (!callType) return;
+
+      setStatus(reason);
+
+      try {
+        if (reason === "ended") {
+          await endCallAPI();
+        } else {
+          await rejectCall(reason);
+        }
+      } catch (error) {
+        console.error("Failed to terminate call:", error);
+      }
+
+      if (endedTimerRef.current) clearTimeout(endedTimerRef.current);
+      endedTimerRef.current = setTimeout(() => {
+        reset();
+        endedTimerRef.current = null;
+      }, 2000);
+    },
+    [endCallAPI, rejectCall],
+  );
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -61,7 +83,7 @@ export default function VideoCall() {
         handleTerminateCall({ reason: "missed" });
       }
     }
-  }, [waitTimeLeft]);
+  }, [handleTerminateCall, remoteStream, waitTimeLeft]);
 
   // ── Assign remote stream to video element
   useEffect(() => {
@@ -97,34 +119,6 @@ export default function VideoCall() {
     });
   }, [isCamOff, localStream, status]);
 
-  const handleTerminateCall = async ({
-    reason = "ended",
-  }: {
-    reason: CallStatus;
-  }) => {
-    const { setStatus, reset, callType } = useCallStore.getState();
-
-    if (!callType) return;
-
-    setStatus(reason);
-
-    try {
-      if (reason === "ended") {
-        await endCallAPI();
-      } else {
-        await rejectCall(reason);
-      }
-    } catch (error) {
-      console.error("Failed to terminate call:", error);
-    }
-
-    if (endedTimerRef.current) clearTimeout(endedTimerRef.current);
-    endedTimerRef.current = setTimeout(() => {
-      reset();
-      endedTimerRef.current = null;
-    }, 2000);
-  };
-
   const handleEndCall = () => {
     if (duration === 0) handleTerminateCall({ reason: "missed" });
     else handleTerminateCall({ reason: "ended" });
@@ -159,16 +153,16 @@ export default function VideoCall() {
 
   // ── Active call UI ───────────────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0a0a0f] text-white overflow-hidden">
+    <div className="fixed inset-0 z-50 flex h-dvh w-dvw max-w-full flex-col overflow-hidden bg-[#0a0a0f] text-white">
       {/* Header */}
-      <header className="shrink-0 flex items-center justify-between px-5 h-15 border-b border-white/6 bg-[#0a0a0f]/90 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center h-9 w-9 rounded-[14px] bg-[#111118] border border-white/6">
+      <header className="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-white/6 bg-[#0a0a0f]/90 px-3 py-2 backdrop-blur-md sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] bg-[#111118] border border-white/6">
             <Video className="w-4.5 h-4.5 text-indigo-400" />
           </div>
-          <div className="leading-none">
-            <p className="text-[13px] font-semibold text-white flex items-center gap-2">
-              Call with {peerUser?.name}
+          <div className="min-w-0 leading-none">
+            <p className="flex min-w-0 items-center gap-2 text-[12px] font-semibold text-white sm:text-[13px]">
+              <span className="min-w-0 truncate">Call with {peerUser?.name}</span>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 Live
@@ -180,16 +174,15 @@ export default function VideoCall() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {(
-            [
-              <ScreenShare className="w-4 h-4" />,
-              <Settings className="w-4 h-4" />,
-            ] as const
-          ).map((icon, i) => (
+        <div className="flex shrink-0 items-center gap-2">
+          {[
+            { label: "Share screen", icon: <ScreenShare className="w-4 h-4" /> },
+            { label: "Settings", icon: <Settings className="w-4 h-4" /> },
+          ].map(({ label, icon }) => (
             <button
-              key={i}
-              className="flex items-center justify-center h-9 w-9 rounded-[14px] bg-[#111118] border border-white/6 text-white/50 hover:text-white hover:bg-white/8 transition-colors"
+              key={label}
+              aria-label={label}
+              className="flex h-9 w-9 items-center justify-center rounded-[14px] border border-white/6 bg-[#111118] text-white/50 transition-colors hover:bg-white/8 hover:text-white"
             >
               {icon}
             </button>
@@ -198,9 +191,9 @@ export default function VideoCall() {
       </header>
 
       {/* Video stage */}
-      <main className="flex-1 relative bg-[#050508] p-4 flex items-center justify-center">
+      <main className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-[#050508] p-2 pb-28 sm:p-4 sm:pb-32">
         {/* Remote video card */}
-        <div className="relative w-full h-full max-w-6xl rounded-[28px] overflow-hidden border border-white/6 bg-[#111118] shadow-2xl shadow-black/60">
+        <div className="relative h-full max-h-full w-full max-w-6xl overflow-hidden rounded-2xl border border-white/6 bg-[#111118] shadow-2xl shadow-black/60 sm:rounded-[28px]">
           <video
             ref={remoteVideoRef}
             autoPlay
@@ -214,7 +207,7 @@ export default function VideoCall() {
               <div className="flex items-center justify-center h-12 w-12 rounded-2xl bg-[#1a1a2a] border border-white/6">
                 <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
               </div>
-              <p className="text-[13px] text-white/35">
+              <p className="px-4 text-center text-[13px] text-white/35">
                 Waiting for remote video…
               </p>
               <p className="text-[11px] text-white/25">
@@ -224,7 +217,7 @@ export default function VideoCall() {
           )}
 
           {/* PiP — local video */}
-          <div className="absolute top-4 right-4 w-44 aspect-video rounded-[20px] overflow-hidden border border-white/10 bg-[#111118] shadow-xl shadow-black/50 z-20">
+          <div className="absolute right-2 top-2 z-20 aspect-video w-[clamp(7rem,32vw,11rem)] overflow-hidden rounded-2xl border border-white/10 bg-[#111118] shadow-xl shadow-black/50 sm:right-4 sm:top-4 sm:rounded-[20px]">
             <video
               ref={localVideoRef}
               autoPlay
@@ -257,7 +250,7 @@ export default function VideoCall() {
         </div>
 
         {/* Control bar */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-[#111118]/90 backdrop-blur-2xl px-6 py-4 rounded-[28px] border border-white/6 shadow-2xl shadow-black/50">
+        <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 flex max-w-[calc(100dvw-1rem)] -translate-x-1/2 items-start gap-2 overflow-x-auto rounded-2xl border border-white/6 bg-[#111118]/90 px-3 py-3 shadow-2xl shadow-black/50 backdrop-blur-2xl sm:bottom-8 sm:gap-3 sm:rounded-[28px] sm:px-6 sm:py-4">
           <ControlButton
             icon={<Mic className="w-5 h-5" />}
             activeIcon={<MicOff className="w-5 h-5" />}

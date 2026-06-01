@@ -97,7 +97,7 @@ export default function RightPanel({ conversationId, onClose }: Props) {
   if (!conversation) return null;
 
   return (
-    <div className="w-full max-w-105 bg-[#0f0f18] border-l border-gray flex flex-col h-screen overflow-hidden shadow-2xl text-slate-200">
+    <div className="flex h-full w-full flex-col overflow-hidden border-l border-gray bg-[#0f0f18] text-slate-200 shadow-2xl">
       {/* Header */}
       <header className="flex items-center justify-between border-b border-gray px-6 py-4 bg-[#111118] shrink-0">
         <div className="flex items-center gap-3">

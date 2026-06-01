@@ -1,13 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   MessageSquare,
   Users,
-  Cloud,
-  Folder,
-  CheckSquare,
   Settings,
 } from "lucide-react";
 import { useAuthStore } from "@/store";
@@ -36,7 +33,7 @@ export default function Sidebar() {
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   return (
-    <aside className="flex flex-col items-center py-3 gap-2 shrink-0 h-100vh w-18 border-r border-gray-800 justify-center!">
+    <aside className="flex h-dvh w-14 shrink-0 flex-col items-center justify-center! gap-2 border-r border-gray-800 py-3 sm:w-18">
       {/* Avatar */}
       <div className="relative mb-3 mt-1 cursor-pointer group">
         <img
@@ -45,7 +42,7 @@ export default function Sidebar() {
             name: currentUser?.name ?? "",
           })}
           alt="avatar"
-          className="w-10 h-10 rounded-full object-cover ring-2 ring-white/25"
+          className="h-9 w-9 rounded-full object-cover ring-2 ring-white/25 sm:h-10 sm:w-10"
         />
 
         <span
@@ -132,7 +129,7 @@ function NavBtn({
     <div className="relative" onClick={onClick}>
       <div
         title={title}
-        className={`w-12 h-12 text-gray-400 flex items-center justify-center rounded-2xl transition-all duration-150 cursor-pointer hover:bg-primary/10 ${active && "text-primary bg-primary/10"}`}
+        className={`flex h-11 w-11 cursor-pointer items-center justify-center rounded-2xl text-gray-400 transition-all duration-150 hover:bg-primary/10 sm:h-12 sm:w-12 ${active && "text-primary bg-primary/10"}`}
       >
         {children}
       </div>

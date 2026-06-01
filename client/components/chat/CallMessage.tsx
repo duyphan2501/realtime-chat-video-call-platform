@@ -26,25 +26,27 @@ export default function CallMessage({
 
   return (
     <div
-      className={`text-nowrap flex items-end gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
+      className={`flex max-w-full items-end gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
     >
       {/* Message Bubble */}
       <div
-        className={`rounded-2xl p-3  text-white ${
+        className={`max-w-full rounded-2xl p-3 text-white ${
           isMe ? "bg-blue-600 " : "bg-gray"
         }`}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <div
-            className={`p-2 rounded-full text-primary ${isMe ? "bg-white" : "bg-gray-100"}`}
+            className={`shrink-0 rounded-full p-2 text-primary ${isMe ? "bg-white" : "bg-gray-100"}`}
           >
             {config.icon}
           </div>
-          <div className="flex flex-col">
-            <span className="font-medium text-[14px]">{config.title}</span>
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate text-[14px] font-medium">
+              {config.title}
+            </span>
             {config.detail && (
               <span
-                className={`text-[12px] ${isMe ? "text-gray-200" : "text-gray-400"}`}
+                className={`truncate text-[12px] ${isMe ? "text-gray-200" : "text-gray-400"}`}
               >
                 {config.detail}
               </span>

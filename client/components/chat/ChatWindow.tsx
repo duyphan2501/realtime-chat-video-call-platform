@@ -1,9 +1,8 @@
 "use client";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Conversation, Message, User } from "@/types";
 import {
   useAuthStore,
-  useConversationStore,
   useMessageStore,
   usePresenceStore,
 } from "@/store";
@@ -12,13 +11,8 @@ import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
 import { useShallow } from "zustand/shallow";
 import DateDivider from "../DateDivider";
-import {
-  fmtTime,
-  getOtherId,
-  getTypingText,
-  sameDay,
-} from "@/utils/chat.utils";
-import { Info, Phone, Search, Video } from "lucide-react";
+import { fmtTime, getTypingText, sameDay } from "@/utils/chat.utils";
+import { ArrowLeft, Info, Video } from "lucide-react";
 import IconBtn from "../IconBtn";
 import { useConversationService, useMessageService } from "@/services";
 import RightPanel from "./RightPanel";
@@ -29,23 +23,23 @@ interface Props {
   conversation: Conversation;
   currentUser: User;
   onStartCall: (type: "audio" | "video") => Promise<void>;
+  onBack?: () => void;
 }
 
 export default function ChatWindow({
   conversation: conv,
   currentUser,
   onStartCall,
+  onBack,
 }: Props) {
   const [isRightPanelOpen, setRightPanelOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   const messages = useMessageStore(
     useShallow((s) => s.messages[conv._id] || []),
   );
   const hasMore = useMessageStore((s) => s.meta[conv._id]?.hasMore || false);
-  const { fetchMessages, isLoading, isSending, sendMessage } =
-    useMessageService();
+  const { fetchMessages, isLoading, sendMessage } = useMessageService();
 
   const typingUsers = usePresenceStore(
     useShallow((s) => s.typingUsers[conv._id] || []),
@@ -53,10 +47,6 @@ export default function ChatWindow({
   const sender = useAuthStore((s) => s.user);
 
   /* ── Load messages ───────────────────────────── */
-  useEffect(() => {
-    fetchMessages(conv._id);
-  }, [conv._id]);
-
   /* ── Join socket room ────────────────────────── */
   useEffect(() => {
     getSocket()?.emit("join_conversation", conv._id);
@@ -65,7 +55,7 @@ export default function ChatWindow({
     };
   }, [conv._id]);
 
-  const { containerRef, scrollToBottom, disableAutoScrollRef, isStickyRef } =
+  const { containerRef, scrollToBottom, disableAutoScrollRef } =
     useChatScroll([messages, conv._id]);
 
   // 2. Logic hiển thị nút Scroll to Bottom (Tối ưu performance)
@@ -82,7 +72,7 @@ export default function ChatWindow({
 
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [containerRef]);
 
   // 3. Reset trạng thái khi đổi hội thoại
   useEffect(() => {
@@ -111,7 +101,14 @@ export default function ChatWindow({
         }
       });
     }
-  }, [conv._id, hasMore, isLoading]);
+  }, [
+    containerRef,
+    conv._id,
+    disableAutoScrollRef,
+    fetchMessages,
+    hasMore,
+    isLoading,
+  ]);
 
   const { markAsRead } = useConversationService();
 
@@ -123,7 +120,7 @@ export default function ChatWindow({
 
   useEffect(() => {
     handleMarkAsRead();
-  }, [conv._id, messages, currentUser._id]);
+  }, [conv._id, currentUser._id]);
 
   /* ── Mark seen ───────────────────────────────── */
   useEffect(() => {
@@ -138,11 +135,11 @@ export default function ChatWindow({
       const tempId = `temp-${Date.now()}`;
       const hasDocuments = files.some((f) => !f.type.startsWith("image/"));
 
-      const optimisticMsg = {
+      const optimisticMsg: Message = {
         _id: tempId,
         conversation: conv._id,
         tempId,
-        sender: sender,
+        sender: sender ?? currentUser,
         content,
         type: hasDocuments ? "file" : files.length > 0 ? "image" : "text",
         attachments: files.map((f) => ({
@@ -154,11 +151,14 @@ export default function ChatWindow({
         })),
         status: "sending",
         isDelivered: false,
-        replyTo,
+        isDeletedForAll: false,
+        reactions: [],
+        replyTo: replyTo ? ({ _id: replyTo } as Message) : undefined,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
-      addMessage(optimisticMsg as any);
+      addMessage(optimisticMsg);
       try {
         await sendMessage({
           conversationId: conv._id,
@@ -166,11 +166,13 @@ export default function ChatWindow({
           files,
           tempId,
         });
-      } catch (error: any) {
-        setError(error.message || "Failed to send message");
+      } catch (error: unknown) {
+        console.error(
+          error instanceof Error ? error.message : "Failed to send message",
+        );
       }
     },
-    [conv._id],
+    [conv._id, currentUser, sendMessage, sender],
   );
 
   /* ── Header info ─────────────────────────────── */
@@ -190,12 +192,20 @@ export default function ChatWindow({
   const isOtherOnline = !isGroup && isOtherOnlineRaw;
 
   return (
-    <div className="flex flex-1 overflow-hidden relative">
-      <div className="flex flex-col flex-1 overflow-hidden">
+    <div className="relative flex min-w-0 flex-1 overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-gray-800">
-          <div className="flex items-center gap-3">
-            <div className="relative">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-800 px-3 py-3 sm:px-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Back to conversations"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white/70 transition-colors hover:bg-white/8 hover:text-white sm:hidden"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div className="relative shrink-0">
               <img
                 src={getAvatar({
                   name: headerName || "User",
@@ -211,10 +221,10 @@ export default function ChatWindow({
                 />
               )}
             </div>
-            <div>
-              <p className="font-semibold text-sm text-white">{headerName}</p>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-white">{headerName}</p>
               <p
-                className="text-xs"
+                className="truncate text-xs"
                 style={{
                   color: isOtherOnline ? "var(--color-online)" : "gray",
                 }}
@@ -228,7 +238,7 @@ export default function ChatWindow({
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             {!isGroup && (
               <>
                 {/* <IconBtn title="Gọi thoại" onClick={() => onStartCall("audio")}>
@@ -337,10 +347,12 @@ export default function ChatWindow({
 
       {/* ── Right panel ── */}
       {isRightPanelOpen && (
-        <RightPanel
-          conversationId={conv._id}
-          onClose={() => setRightPanelOpen(false)}
-        />
+        <div className="absolute inset-y-0 right-0 z-30 flex w-full max-w-[min(100%,26.25rem)] bg-[#0f0f18] shadow-2xl shadow-black/60 max-sm:max-w-full">
+          <RightPanel
+            conversationId={conv._id}
+            onClose={() => setRightPanelOpen(false)}
+          />
+        </div>
       )}
     </div>
   );

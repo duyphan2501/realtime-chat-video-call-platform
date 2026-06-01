@@ -12,9 +12,9 @@ export default function MainAppShell({
 }) {
   return (
     <AuthProvider>
-      <div className="flex">
+      <div className="flex h-dvh w-dvw max-w-full overflow-hidden">
         <Sidebar />
-        <main className="flex-1">{children}</main>
+        <main className="min-w-0 flex-1 overflow-hidden">{children}</main>
         <IncomingCallPopup />
         <VideoCall />
       </div>
