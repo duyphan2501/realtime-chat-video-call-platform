@@ -74,15 +74,26 @@ export const initSocket = async (server, clientUrl) => {
     registerChatHandlers(io, socket);
     registerWebRTCHandlers(io, socket);
 
-    socket.on("client:ready", async () => {
+    // Tạo cờ hiệu cục bộ cho riêng socket này nhằm tránh việc emit trùng lặp
+    let isCallEmitted = false;
+    const handleEmitPendingCall = async () => {
+      if (isCallEmitted) return;
+      isCallEmitted = true;
       await emitPendingCall(socket, userId);
+    };
+
+    // Cách 1: Client chủ động báo đã sẵn sàng nhận sự kiện
+    socket.on("client:ready", async () => {
+      await handleEmitPendingCall();
     });
 
-    setTimeout(() => {
-      void emitPendingCall(socket, userId);
+    // Cách 2: Dự phòng sau 300ms nếu client tải chậm hoặc không gửi client:ready
+    const pendingCallTimeout = setTimeout(() => {
+      void handleEmitPendingCall();
     }, 300);
 
     socket.on("disconnect", async () => {
+      clearTimeout(pendingCallTimeout);
       await redisClient.sRem(userKey, socket.id);
       const remainingSockets = await redisClient.sCard(userKey);
       console.log(

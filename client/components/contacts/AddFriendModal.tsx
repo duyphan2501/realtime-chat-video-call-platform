@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { UserPlus, Search, X, UserCheck, Loader2 } from "lucide-react";
+import { UserPlus, Search, X, UserCheck, Loader2, MessageSquare } from "lucide-react";
 import type { User } from "@/types";
 import { useFriendService } from "@/services";
 import { useFriendStore } from "@/store";
@@ -11,11 +11,13 @@ import SearchBar from "./SearchBar";
 interface AddFriendModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onStartChat: (userId: string) => void;
 }
 
 export default function AddFriendModal({
   isOpen,
   onClose,
+  onStartChat,
 }: AddFriendModalProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<User[]>([]);
@@ -115,7 +117,11 @@ export default function AddFriendModal({
 
         {/* Search Input */}
         <div className="p-4">
-          <SearchBar value={query} onChange={setQuery} placeholder="Search friends..." />
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            placeholder="Search friends..."
+          />
         </div>
 
         {/* Results */}
@@ -144,35 +150,47 @@ export default function AddFriendModal({
                       <p className="text-xs text-slate-500">{user.email}</p>
                     </div>
                   </div>
-                  {user.friendStatus === "sent" ? (
-                    /* Cancel Request button (For those who have sent but are waiting) */
+                  <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleCancelRequest(user)}
-                      disabled={sendingId === user._id}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-900/30 text-rose-400 hover:bg-rose-200 hover:text-red-700 transition-colors disabled:opacity-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (user?._id) onStartChat(user._id);
+                      }}
+                      className="p-2 rounded-full bg-slate-800 text-slate-300 hover:text-primary transition-colors"
+                      title="Chat"
                     >
-                      {sendingId === user._id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <X className="w-3.5 h-3.5" />
-                      )}
-                      Cancel Request
+                      <MessageSquare className="w-4 h-4" />
                     </button>
-                  ) : (
-                    /* Nút Kết bạn (Dành cho người chưa có quan hệ gì) */
-                    <button
-                      onClick={() => handleSendRequest(user)}
-                      disabled={sendingId === user._id}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-blue-600 transition-colors disabled:opacity-50"
-                    >
-                      {sendingId === user._id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <UserPlus className="w-3.5 h-3.5" />
-                      )}
-                      Add Friend
-                    </button>
-                  )}
+                    {user.friendStatus === "sent" ? (
+                      /* Cancel Request button (For those who have sent but are waiting) */
+                      <button
+                        onClick={() => handleCancelRequest(user)}
+                        disabled={sendingId === user._id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-900/30 text-rose-400 hover:bg-rose-200 hover:text-red-700 transition-colors disabled:opacity-50"
+                      >
+                        {sendingId === user._id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <X className="w-3.5 h-3.5" />
+                        )}
+                        Cancel Request
+                      </button>
+                    ) : (
+                      /* Nút Kết bạn (Dành cho người chưa có quan hệ gì) */
+                      <button
+                        onClick={() => handleSendRequest(user)}
+                        disabled={sendingId === user._id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-blue-600 transition-colors disabled:opacity-50"
+                      >
+                        {sendingId === user._id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <UserPlus className="w-3.5 h-3.5" />
+                        )}
+                        Add Friend
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
