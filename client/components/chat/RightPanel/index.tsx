@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { useConversationStore } from "@/store/conversation.store";
 import { useShallow } from "zustand/react/shallow";
-import { Info, X, LogOut, AlertTriangle, ChevronRight } from "lucide-react";
+import {
+  Info,
+  X,
+  LogOut,
+  AlertTriangle,
+  ChevronRight,
+  Trash2,
+} from "lucide-react";
 import GroupHeader from "./GroupHeader";
 import MembersAccordion from "./MembersAccordion";
 import SharedMediaAccordion from "./SharedMediaAccordion";
@@ -25,9 +32,16 @@ export default function RightPanel({ conversationId, onClose }: Props) {
   const router = useRouter();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showDisbandConfirm, setShowDisbandConfirm] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [showSelectOwner, setShowSelectOwner] = useState(false);
-  const { leaveGroup, disbandGroup, isLeavingGroup, isDisbandingGroup } =
-    useConversationService();
+  const {
+    leaveGroup,
+    disbandGroup,
+    removeConversation,
+    isLeavingGroup,
+    isDisbandingGroup,
+    isRemovingConversation,
+  } = useConversationService();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Tối ưu selector: chỉ lấy đúng conversation cần thiết
@@ -39,7 +53,9 @@ export default function RightPanel({ conversationId, onClose }: Props) {
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin =
     conversation?.participants?.some(
-      (p) => p.user?._id === currentUser?._id && p.role === "admin",
+      (p) =>
+        p.user?._id === currentUser?._id &&
+        (p.role === "admin" || p.role === "owner"),
     ) || false;
   const isOwner =
     conversation?.participants?.some(
@@ -63,7 +79,7 @@ export default function RightPanel({ conversationId, onClose }: Props) {
       router.push("/");
       onClose();
       setShowSelectOwner(false);
-    } catch (error) {
+    } catch {
       // Error handled by service
     }
   };
@@ -74,7 +90,7 @@ export default function RightPanel({ conversationId, onClose }: Props) {
       await leaveGroup({ conversationId: conversation._id });
       router.push("/");
       onClose();
-    } catch (error) {
+    } catch {
       // Error handled by service
     } finally {
       setShowLeaveConfirm(false);
@@ -87,10 +103,23 @@ export default function RightPanel({ conversationId, onClose }: Props) {
       await disbandGroup(conversation._id);
       router.push("/");
       onClose();
-    } catch (error) {
+    } catch {
       // Error handled by service
     } finally {
       setShowDisbandConfirm(false);
+    }
+  };
+
+  const handleRemoveConversation = async () => {
+    if (!conversation) return;
+    try {
+      await removeConversation(conversation._id);
+      router.push("/");
+      onClose();
+    } catch {
+      // Error handled by service
+    } finally {
+      setShowRemoveConfirm(false);
     }
   };
 
@@ -138,45 +167,62 @@ export default function RightPanel({ conversationId, onClose }: Props) {
         </div>
 
         {/* Danger Zone */}
-        {isGroup && (
-          <div className="px-6 py-4 space-y-3">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2 mb-1">
-              Danger Zone
-            </p>
+        <div className="px-6 py-4 space-y-3">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2 mb-1">
+            Danger Zone
+          </p>
 
-            {isOwner && (
+          {isGroup && (
+            <>
+              {isOwner && (
+                <button
+                  onClick={() => setShowDisbandConfirm(true)}
+                  disabled={isDisbandingGroup}
+                  className="w-full flex items-center justify-between px-5 py-4 bg-red-500/5 border border-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all duration-300 group disabled:opacity-50"
+                >
+                  <div className="flex items-center gap-3 font-bold text-sm">
+                    <AlertTriangle size={18} />
+                    {isDisbandingGroup ? "Disbanding..." : "Disband Group"}
+                  </div>
+                  <ChevronRight
+                    size={16}
+                    className="opacity-50 group-hover:translate-x-1 transition-transform"
+                  />
+                </button>
+              )}
+
               <button
-                onClick={() => setShowDisbandConfirm(true)}
-                disabled={isDisbandingGroup}
-                className="w-full flex items-center justify-between px-5 py-4 bg-red-500/5 border border-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all duration-300 group disabled:opacity-50"
+                onClick={handleLeaveGroupClick}
+                disabled={isLeavingGroup}
+                className="w-full flex items-center justify-between px-5 py-4 bg-white/5 border border-white/5 text-slate-300 rounded-2xl hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-300 group disabled:opacity-50"
               >
                 <div className="flex items-center gap-3 font-bold text-sm">
-                  <AlertTriangle size={18} />
-                  {isDisbandingGroup ? "Disbanding..." : "Disband Group"}
+                  <LogOut size={18} />
+                  {isLeavingGroup ? "Leaving..." : "Leave Group"}
                 </div>
                 <ChevronRight
                   size={16}
                   className="opacity-50 group-hover:translate-x-1 transition-transform"
                 />
               </button>
-            )}
+            </>
+          )}
 
-            <button
-              onClick={handleLeaveGroupClick}
-              disabled={isLeavingGroup}
-              className="w-full flex items-center justify-between px-5 py-4 bg-white/5 border border-white/5 text-slate-300 rounded-2xl hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-300 group disabled:opacity-50"
-            >
-              <div className="flex items-center gap-3 font-bold text-sm">
-                <LogOut size={18} />
-                {isLeavingGroup ? "Leaving..." : "Leave Group"}
-              </div>
-              <ChevronRight
-                size={16}
-                className="opacity-50 group-hover:translate-x-1 transition-transform"
-              />
-            </button>
-          </div>
-        )}
+          <button
+            onClick={() => setShowRemoveConfirm(true)}
+            disabled={isRemovingConversation}
+            className="w-full flex items-center justify-between px-5 py-4 bg-white/5 border border-white/5 text-slate-300 rounded-2xl hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-300 group disabled:opacity-50"
+          >
+            <div className="flex items-center gap-3 font-bold text-sm">
+              <Trash2 size={18} />
+              {isRemovingConversation ? "Removing..." : "Remove Conversation"}
+            </div>
+            <ChevronRight
+              size={16}
+              className="opacity-50 group-hover:translate-x-1 transition-transform"
+            />
+          </button>
+        </div>
       </div>
 
       {/* Footer */}
@@ -213,6 +259,17 @@ export default function RightPanel({ conversationId, onClose }: Props) {
         onCancel={() => setShowDisbandConfirm(false)}
         confirmText="Disband"
         cancelText="Cancel"
+      />
+
+      <ConfirmModal
+        isOpen={showRemoveConfirm}
+        title="Remove Conversation"
+        message="This conversation will be removed from your inbox and existing messages will be hidden for you."
+        onConfirm={handleRemoveConversation}
+        onCancel={() => setShowRemoveConfirm(false)}
+        confirmText={isRemovingConversation ? "Removing..." : "Remove"}
+        cancelText="Cancel"
+        variant="danger"
       />
 
       {selectedUser && (

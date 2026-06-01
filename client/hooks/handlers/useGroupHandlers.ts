@@ -1,90 +1,114 @@
-"use client";
-import { useConversationStore, useFriendStore } from "@/store";
-import { useAuthStore } from "@/store";
 import { useEffect } from "react";
+import type { Socket } from "socket.io-client";
 
-export function useGroupHandlers(socket: any) {
-  const { user } = useAuthStore();
-  const { updateConversation, addConversation, removeConversation } =
-    useConversationStore();
-  const { removeFriend } = useFriendStore();
+import { useConversationStore, useFriendStore } from "@/store";
+import type { Conversation, Message } from "@/types";
 
+type GroupEventPayload = {
+  conversation: Conversation;
+  systemMessage?: Message;
+};
+
+type RemovedFromGroupPayload = {
+  conversationId: string;
+  friendId?: string;
+};
+
+type GroupMemberRemovedPayload = GroupEventPayload & {
+  removedUserId: string;
+  friendId?: string;
+};
+
+type GroupRolePayload = GroupEventPayload & {
+  userId: string;
+  role?: string;
+};
+
+type GroupDisbandedPayload = {
+  conversationId: string;
+};
+
+export function useGroupHandlers(socket: Socket | null) {
   useEffect(() => {
     if (!socket) return;
-    socket?.on("group:memberAdded", (data: any) => {
-      console.log("group:memberAdded", data);
-      // Update conversation participants
-      updateConversation(data.conversation._id, data.conversation);
-    });
 
-    socket?.on("group:memberRemoved", (data: any) => {
-      console.log("group:memberRemoved", data);
-      // Update conversation participants
-      updateConversation(data.conversation._id, data.conversation);
-      removeFriend(data.friendId);
-    });
+    const onMemberAdded = (data: GroupEventPayload) => {
+      useConversationStore
+        .getState()
+        .updateConversation(data.conversation._id, data.conversation);
+    };
 
-    socket?.on("group:removedFromGroup", (data: any) => {
-      console.log("group:removedFromGroup", data);
-      // Remove conversation from user's list
-      removeConversation(data.conversationId);
-    });
+    const onMemberRemoved = (data: GroupMemberRemovedPayload) => {
+      useConversationStore
+        .getState()
+        .updateConversation(data.conversation._id, data.conversation);
+      if (data.friendId) useFriendStore.getState().removeFriend(data.friendId);
+    };
 
-    socket?.on("group:memberLeft", (data: any) => {
-      console.log("group:memberLeft", data);
-      // Update conversation participants
-      updateConversation(data.conversation._id, data.conversation);
-    });
+    const onRemovedFromGroup = (data: RemovedFromGroupPayload) => {
+      useConversationStore.getState().removeConversation(data.conversationId);
+    };
 
-    socket?.on("group:memberPromoted", (data: any) => {
-      console.log("group:memberPromoted", data);
-      // Update conversation participants
-      updateConversation(data.conversation._id, data.conversation);
-    });
+    const onMemberLeft = (data: GroupEventPayload) => {
+      useConversationStore
+        .getState()
+        .updateConversation(data.conversation._id, data.conversation);
+    };
 
-    socket?.on("group:adminRemoved", (data: any) => {
-      console.log("group:adminRemoved", data);
-      // Update conversation participants
-      updateConversation(data.conversation._id, data.conversation);
-    });
+    const onMemberPromoted = (data: GroupRolePayload) => {
+      useConversationStore
+        .getState()
+        .updateConversation(data.conversation._id, data.conversation);
+    };
 
-    socket?.on("group:updated", (data: any) => {
-      console.log("group:updated", data);
-      // Update conversation with only name and avatar to preserve lastMessage
-      updateConversation(data._id, {
+    const onAdminRemoved = (data: GroupEventPayload) => {
+      useConversationStore
+        .getState()
+        .updateConversation(data.conversation._id, data.conversation);
+    };
+
+    const onGroupUpdated = (data: any) => {
+      useConversationStore.getState().updateConversation(data._id, {
         name: data.name,
-        avatar: data.avatar,
+        avatar: data.avatar?.url || data.avatar,
         participants: data.participants,
       });
-    });
+    };
 
-    socket?.on("group:disbanded", (data: any) => {
-      console.log("group:disbanded", data);
-      // Remove conversation from list
-      removeConversation(data.conversationId);
-    });
+    const onGroupDisbanded = (data: GroupDisbandedPayload) => {
+      useConversationStore.getState().removeConversation(data.conversationId);
+    };
 
-    socket?.on("group:addedToGroup", (data: any) => {
-      console.log("group:addedToGroup", data);
-      // Add conversation to user's list
-      addConversation(data);
-    });
+    const onAddedToGroup = (data: Conversation) => {
+      useConversationStore.getState().addConversation(data);
+    };
 
-    socket?.on("group:leftGroup", (data: any) => {
-      console.log("group:leftGroup", data);
-      // Remove conversation from user's list
-      removeConversation(data.conversationId);
-    });
+    const onLeftGroup = (data: RemovedFromGroupPayload) => {
+      useConversationStore.getState().removeConversation(data.conversationId);
+    };
+
+    socket.on("group:memberAdded", onMemberAdded);
+    socket.on("group:memberRemoved", onMemberRemoved);
+    socket.on("group:removedFromGroup", onRemovedFromGroup);
+    socket.on("group:memberLeft", onMemberLeft);
+    socket.on("group:memberPromoted", onMemberPromoted);
+    socket.on("group:adminRemoved", onAdminRemoved);
+    socket.on("group:updated", onGroupUpdated);
+    socket.on("group:disbanded", onGroupDisbanded);
+    socket.on("group:addedToGroup", onAddedToGroup);
+    socket.on("group:leftGroup", onLeftGroup);
+
     return () => {
-      socket.off("group:memberAdded");
-      socket.off("group:memberRemoved");
-      socket.off("group:memberLeft");
-      socket.off("group:memberPromoted");
-      socket.off("group:adminRemoved");
-      socket.off("group:updated");
-      socket.off("group:disbanded");
-      socket.off("group:addedToGroup");
-      socket.off("group:leftGroup");
+      socket.off("group:memberAdded", onMemberAdded);
+      socket.off("group:memberRemoved", onMemberRemoved);
+      socket.off("group:removedFromGroup", onRemovedFromGroup);
+      socket.off("group:memberLeft", onMemberLeft);
+      socket.off("group:memberPromoted", onMemberPromoted);
+      socket.off("group:adminRemoved", onAdminRemoved);
+      socket.off("group:updated", onGroupUpdated);
+      socket.off("group:disbanded", onGroupDisbanded);
+      socket.off("group:addedToGroup", onAddedToGroup);
+      socket.off("group:leftGroup", onLeftGroup);
     };
   }, [socket]);
 }

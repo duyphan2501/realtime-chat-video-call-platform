@@ -1,6 +1,5 @@
 import {
   selectIsOnline,
-  useConversationStore,
   usePresenceStore,
 } from "@/store";
 import { Conversation, User } from "@/types";
@@ -35,7 +34,7 @@ const ConversationItem = ({
     <div
       key={conv._id}
       onClick={() => onSelect(conv._id)}
-      className={`relative flex items-center hover:bg-primary/30 transition gap-3 px-4 py-3 cursor-pointer ${isActive ? " bg-primary/30" : ""}`}
+      className={`group relative flex items-center hover:bg-primary/30 transition gap-3 px-4 py-3 cursor-pointer ${isActive ? " bg-primary/30" : ""}`}
     >
       {isActive && (
         <div className="min-w-1 h-full bg-primary absolute left-0"></div>

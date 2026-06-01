@@ -1,12 +1,18 @@
 import { useEffect } from "react";
 import { useMessageStore, useConversationStore, useAuthStore } from "@/store";
+import type { Conversation, Message, Reaction } from "@/types";
 import type { Socket } from "socket.io-client";
+
+type MessageNewPayload = {
+  newMessage?: Message;
+  unreadCount?: number;
+};
 
 export function useChatHandlers(socket: Socket | null) {
   useEffect(() => {
     if (!socket) return;
 
-    const onMessageNew = (data: any) => {
+    const onMessageNew = (data: MessageNewPayload) => {
       if (!data?.newMessage?._id) return;
       const { addMessage } = useMessageStore.getState();
       addMessage(data.newMessage);
@@ -34,7 +40,7 @@ export function useChatHandlers(socket: Socket | null) {
     }: {
       conversationId: string;
       messageId: string;
-      reactions: any;
+      reactions: Reaction[];
     }) => {
       useMessageStore
         .getState()
@@ -68,8 +74,17 @@ export function useChatHandlers(socket: Socket | null) {
         .updateSeen(conversationId, userId, lastRead);
     };
 
-    const onNewConversation = (newConv: any) => {
+    const onNewConversation = (newConv: Conversation) => {
       useConversationStore.getState().addConversation(newConv);
+    };
+
+    const onConversationRemoved = ({
+      conversationId,
+    }: {
+      conversationId: string;
+    }) => {
+      useConversationStore.getState().removeConversation(conversationId);
+      useMessageStore.getState().clearCache(conversationId);
     };
 
     const onMessageReceived = ({
@@ -92,13 +107,16 @@ export function useChatHandlers(socket: Socket | null) {
     socket.on("message:seen", onMessageSeen);
     socket.on("message:received", onMessageReceived);
     socket.on("conversation:new", onNewConversation);
+    socket.on("conversation:removed", onConversationRemoved);
 
     return () => {
       socket.off("message:new", onMessageNew);
       socket.off("message:reaction", onMessageReaction);
       socket.off("message:deleted", onMessageDeleted);
       socket.off("message:seen", onMessageSeen);
+      socket.off("message:received", onMessageReceived);
       socket.off("conversation:new", onNewConversation);
+      socket.off("conversation:removed", onConversationRemoved);
     };
   }, [socket]);
 }

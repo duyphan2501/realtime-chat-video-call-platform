@@ -5,9 +5,22 @@ import { AuthService } from "./auth.service.js";
 import { MessageService } from "./message.service.js";
 import { io } from "../sockets/index.js";
 
+const getParticipantUserId = (participant) =>
+  participant.user?._id?.toString() || participant.user?.toString();
+
+const emitToConversationParticipants = (conversation, eventName, payload) => {
+  conversation.participants.forEach((participant) => {
+    const participantId = getParticipantUserId(participant);
+    if (participantId) io.to(`user_${participantId}`).emit(eventName, payload);
+  });
+};
+
 export const ConversationService = {
   getConversations: async ({ userId, type, cursor, lastId, limit = 10 }) => {
-    const match = { "participants.user": userId };
+    const match = {
+      "participants.user": userId,
+      "hiddenFor.user": { $ne: userId },
+    };
     if (type === "direct" || type === "group") match.type = type;
 
     const hasCursor = cursor && cursor !== "null" && cursor !== "undefined";
@@ -101,6 +114,10 @@ export const ConversationService = {
       });
 
       if (foundConversation) {
+        await ConversationModel.updateOne(
+          { _id: foundConversation._id },
+          { $pull: { hiddenFor: { user: creatorId } } },
+        );
         return foundConversation;
       }
     }
@@ -136,8 +153,6 @@ export const ConversationService = {
       });
 
       // 3. Bắn Socket thông báo cho tất cả thành viên (additional notifications beyond the system message)
-      console.log("conversation", fullConversation);
-      console.log("systemMsg", systemMsg);
       participantIds.forEach((id) => {
         // Thông báo có nhóm mới
         io.to(`user_${id}`).emit("conversation:new", fullConversation);
@@ -205,6 +220,45 @@ export const ConversationService = {
     return { total, items };
   },
 
+  removeConversation: async ({ conversationId, userId }) => {
+    const conversation = await ConversationModel.findOne({
+      _id: conversationId,
+      "participants.user": userId,
+    });
+
+    if (!conversation) {
+      throw createHttpError(404, "Conversation not found");
+    }
+
+    const hiddenAt = new Date();
+
+    await ConversationModel.updateOne(
+      { _id: conversationId },
+      { $pull: { hiddenFor: { user: userId } } },
+    );
+
+    await ConversationModel.updateOne(
+      { _id: conversationId },
+      {
+        $set: {
+          "participants.$[participant].unreadCount": 0,
+          "participants.$[participant].lastRead": hiddenAt,
+        },
+        $push: { hiddenFor: { user: userId, hiddenAt } },
+      },
+      { arrayFilters: [{ "participant.user": userId }] },
+    );
+
+    await MessageModel.updateMany(
+      { conversation: conversationId },
+      { $addToSet: { deletedFor: userId } },
+    );
+
+    io.to(`user_${userId}`).emit("conversation:removed", {
+      conversationId,
+    });
+  },
+
   updateGroup: async ({ conversationId, userId, updateData }) => {
     // Check if user is admin or owner
     const conversation = await ConversationModel.findById(conversationId);
@@ -232,9 +286,10 @@ export const ConversationService = {
       { new: true },
     )
       .populate("participants.user", "_id name avatar")
-      .populate("lastMessage");
+      .populate("lastMessage")
 
-    io.to(`conversation_${conversationId}`).emit(
+    emitToConversationParticipants(
+      updatedConversation,
       "group:updated",
       updatedConversation,
     );
@@ -296,8 +351,7 @@ export const ConversationService = {
       content: systemContent,
     });
 
-    // Emit to group members (additional group-specific events)
-    io.to(`conversation_${conversationId}`).emit("group:memberAdded", {
+    emitToConversationParticipants(updatedConversation, "group:memberAdded", {
       newMemberId,
       conversation: updatedConversation,
       systemMessage: systemMsg,
@@ -348,8 +402,7 @@ export const ConversationService = {
       content: systemContent,
     });
 
-    // Emit to group members (additional group-specific events)
-    io.to(`conversation_${conversationId}`).emit("group:memberRemoved", {
+    emitToConversationParticipants(updatedConversation, "group:memberRemoved", {
       removedUserId: memberToRemoveId,
       conversation: updatedConversation,
       systemMessage: systemMsg,
@@ -399,8 +452,7 @@ export const ConversationService = {
       content: systemContent,
     });
 
-    // Emit to group members (additional group-specific events)
-    io.to(`conversation_${conversationId}`).emit("group:memberPromoted", {
+    emitToConversationParticipants(updatedConversation, "group:memberPromoted", {
       userId: targetUserId,
       role: "admin",
       conversation: updatedConversation,
@@ -446,8 +498,7 @@ export const ConversationService = {
       content: systemContent,
     });
 
-    // Emit to group members (additional group-specific events)
-    io.to(`conversation_${conversationId}`).emit("group:adminRemoved", {
+    emitToConversationParticipants(updatedConversation, "group:adminRemoved", {
       userId: targetUserId,
       conversation: updatedConversation,
       systemMessage: systemMsg,
@@ -518,8 +569,7 @@ export const ConversationService = {
       content: systemContent,
     });
 
-    // Emit to group members (additional group-specific events)
-    io.to(`conversation_${conversationId}`).emit("group:memberLeft", {
+    emitToConversationParticipants(updatedConversation, "group:memberLeft", {
       userId,
       conversation: updatedConversation,
       systemMessage: systemMsg,
@@ -555,10 +605,6 @@ export const ConversationService = {
       io.to(`user_${participant.user}`).emit("group:disbanded", {
         conversationId,
       });
-    });
-
-    io.to(`conversation_${conversationId}`).emit("group:disbanded", {
-      conversationId,
     });
   },
 };

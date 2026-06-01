@@ -19,7 +19,7 @@ interface GroupHeaderProps {
 const QUICK_ACTIONS = {
   group: [
     { icon: <UserPlus size={20} />, label: "Add", requireAdmin: false },
-    { icon: <SquarePen size={20} />, label: "Edit", requireAdmin: false },
+    { icon: <SquarePen size={20} />, label: "Edit", requireAdmin: true },
   ],
   direct: [
     { icon: <UserPen size={20} />, label: "Profile", requireAdmin: false },

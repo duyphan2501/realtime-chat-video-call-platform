@@ -25,8 +25,11 @@ export default function ConversationList({
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"all" | "group">("all");
 
-  const { getConversations, isFetchingConvs, markAsRead } =
-    useConversationService();
+  const {
+    getConversations,
+    isFetchingConvs,
+    markAsRead,
+  } = useConversationService();
   const convCursor = useConversationStore((s) => s.convCursor);
   const socket = useSocketStore((s) => s.socket);
   const setActiveId = useConversationStore((s) => s.setActiveId);
@@ -35,6 +38,7 @@ export default function ConversationList({
     setActiveId(conId);
     markAsRead(conId);
   };
+
   const safeConversations = conversations.filter((c) => c?._id);
 
   useEffect(() => {

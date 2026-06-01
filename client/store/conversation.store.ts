@@ -83,7 +83,10 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     set((s) => {
       const newMap = new Map(s.conversations);
       newMap.delete(id);
-      return { conversations: newMap };
+      return {
+        conversations: newMap,
+        activeId: s.activeId === id ? null : s.activeId,
+      };
     }),
 
   bumpConversation: (msg, newUnreadCount) =>

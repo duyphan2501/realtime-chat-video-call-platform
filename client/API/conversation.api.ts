@@ -17,6 +17,8 @@ export const conversationAPI = (axiosPrivate: AxiosInstance) => ({
     ),
   markAsRead: (conversationId: string) =>
     axiosPrivate.post(`/conversations/${conversationId}/read`),
+  removeConversation: (conversationId: string) =>
+    axiosPrivate.delete(`/conversations/${conversationId}`),
   createConversation: (payload: {
     participantIds: string[];
     type: string;

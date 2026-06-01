@@ -56,15 +56,22 @@ const sendMessage = async ({
     { _id: conversationId },
     {
       $inc: { "participants.$[elem].unreadCount": 1 },
-      lastMessage: newMessage._id,
-      lastMessageAt: new Date(),
+      $set: {
+        lastMessage: newMessage._id,
+        lastMessageAt: new Date(),
+      },
+      $pull: { hiddenFor: { user: { $exists: true } } },
     },
     {
       arrayFilters: [{ "elem.user": { $ne: senderId } }],
       new: true, // Lấy data sau khi update
     },
   )
-    .populate("lastMessage")
+    .populate("participants.user", "_id name avatar lastRead lastActive")
+    .populate({
+      path: "lastMessage",
+      populate: { path: "sender", select: "_id name avatar" },
+    })
     .lean();
 
   const fullMessage = await newMessage.populate("sender", "_id name avatar");
@@ -73,9 +80,24 @@ const sendMessage = async ({
   // 3. Gửi Socket thông minh hơn
   // Thay vì broadcast chung chung, ta cần gửi unread riêng biệt cho từng người
   updatedConv.participants.forEach((p) => {
-    const participantId = p.user?.toString();
+    const participantId = p.user?._id?.toString() || p.user?.toString();
     const room = `user_${participantId}`;
     if (room) {
+      const conversationData = {
+        ...updatedConv,
+        avatar: updatedConv.avatar?.url || undefined,
+        unreadCount: p.unreadCount,
+        otherUser:
+          updatedConv.type === "direct"
+            ? (updatedConv.participants.find(
+                (participant) =>
+                  (participant.user?._id?.toString() ||
+                    participant.user?.toString()) !== participantId,
+              )?.user ?? null)
+            : null,
+      };
+
+      io.to(room).emit("conversation:new", conversationData);
       io.to(room).emit("message:new", {
         newMessage: { ...messageData },
         unreadCount: p.unreadCount,

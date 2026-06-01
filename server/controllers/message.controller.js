@@ -8,7 +8,7 @@ const getMessages = async (req, res, next) => {
     if (!conversationId)
       throw createHttpError.BadRequest("ConversationId is required");
     const { cursor } = req.query;
-    const limit = parseInt(req.query.limit) || 20;
+    let limit = parseInt(req.query.limit) || 20;
     if (limit > 100) limit = 100;
     const userId = req.user.userId;
 

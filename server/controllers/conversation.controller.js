@@ -57,6 +57,25 @@ const createConversation = async (req, res, next) => {
   }
 };
 
+const removeConversation = async (req, res, next) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.userId;
+
+    if (!conversationId)
+      throw createHttpError.BadRequest("Conversation ID is required");
+
+    await ConversationService.removeConversation({ conversationId, userId });
+
+    res.status(200).json({
+      success: true,
+      message: "Conversation removed",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getConversationMedia = async (req, res, next) => {
   try {
     const conversationId = req.params.id;
@@ -98,8 +117,8 @@ const updateGroup = async (req, res, next) => {
 
     // Only include fields that are actually provided
     const updateData = {};
-    if (name !== undefined) updateData.name = name;
-    if (avatar !== undefined) updateData.avatar = avatar;
+    if (name !== undefined && name !== null) updateData.name = name;
+    if (avatar !== undefined && avatar !== null) updateData.avatar = avatar;
 
     const conversation = await ConversationService.updateGroup({
       conversationId,
@@ -267,6 +286,7 @@ export const ConversationController = {
   getConversations,
   markAsRead,
   createConversation,
+  removeConversation,
   getConversationMedia,
   updateGroup,
   addMember,

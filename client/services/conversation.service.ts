@@ -1,9 +1,15 @@
 "use client";
 import { useAPI } from "@/API/useAPI";
-import { useConversationStore } from "@/store";
-import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
+import { useConversationStore, useMessageStore } from "@/store";
+import type { Conversation } from "@/types";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 // Xóa import { create } from "domain";
 import toast from "react-hot-toast";
+
+type GroupUpdatePayload = {
+  name?: string;
+  avatar?: { url: string; publicId: string } | null;
+};
 
 export const useGetInfiniteSharedContent = (
   conversationId: string,
@@ -94,8 +100,8 @@ export const useConversationService = () => {
       useConversationStore.getState().setActiveId(newConv._id);
     },
 
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to create group");
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to create group"));
     },
   });
 
@@ -117,7 +123,7 @@ export const useConversationService = () => {
         }
       }
 
-      const updateData: any = { name };
+      const updateData: GroupUpdatePayload = { name };
       // Only include avatar in update if it was provided
       if (uploadedAvatarUrl !== undefined) {
         updateData.avatar = uploadedAvatarUrl
@@ -127,16 +133,16 @@ export const useConversationService = () => {
 
       await convApi.updateGroup(conversationId, updateData);
 
-      const updates: any = {};
+      const updates: Partial<Conversation> = {};
       if (name) updates.name = name;
-      if (uploadedAvatarUrl !== undefined) updates.avatar = uploadedAvatarUrl;
+      if (uploadedAvatarUrl) updates.avatar = uploadedAvatarUrl;
       updateConversation(conversationId, updates);
     },
     onSuccess: () => {
       toast.success("Group updated successfully");
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to update group");
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to update group"));
     },
   });
 
@@ -166,8 +172,8 @@ export const useConversationService = () => {
       }
       toast.success(`${userIds.length} member(s) added successfully`);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to add members");
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to add members"));
     },
   });
 
@@ -175,7 +181,7 @@ export const useConversationService = () => {
     mutationFn: (payload: { conversationId: string; userId: string }) =>
       convApi.removeMemberFromGroup(payload.conversationId, payload.userId),
     onSuccess: (result, variables) => {
-      const { conversationId, userId } = variables;
+      const { conversationId } = variables;
       if (result?.data?.conversation) {
         updateConversation(conversationId, {
           participants: result.data.conversation.participants,
@@ -183,8 +189,8 @@ export const useConversationService = () => {
       }
       toast.success("Member removed from group");
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to remove member");
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to remove member"));
     },
   });
 
@@ -192,7 +198,7 @@ export const useConversationService = () => {
     mutationFn: (payload: { conversationId: string; userId: string }) =>
       convApi.makeAdmin(payload.conversationId, payload.userId),
     onSuccess: (result, variables) => {
-      const { conversationId, userId } = variables;
+      const { conversationId } = variables;
       if (result?.data?.conversation) {
         updateConversation(conversationId, {
           participants: result.data.conversation.participants,
@@ -200,8 +206,8 @@ export const useConversationService = () => {
       }
       toast.success("Member promoted to admin");
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to make admin");
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to make admin"));
     },
   });
 
@@ -217,8 +223,8 @@ export const useConversationService = () => {
       removeConversation(conversationId);
       toast.success("Left group successfully");
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to leave group");
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to leave group"));
     },
   });
 
@@ -229,8 +235,21 @@ export const useConversationService = () => {
       removeConversation(conversationId);
       toast.success("Group disbanded successfully");
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to disband group");
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to disband group"));
+    },
+  });
+
+  const removeConversationMutation = useMutation({
+    mutationFn: (conversationId: string) =>
+      convApi.removeConversation(conversationId),
+    onSuccess: (_, conversationId) => {
+      removeConversation(conversationId);
+      useMessageStore.getState().clearCache(conversationId);
+      toast.success("Conversation removed");
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to remove conversation"));
     },
   });
 
@@ -252,6 +271,7 @@ export const useConversationService = () => {
     makeAdmin: makeAdminMutation.mutateAsync,
     leaveGroup: leaveGroupMutation.mutateAsync,
     disbandGroup: disbandGroupMutation.mutateAsync,
+    removeConversation: removeConversationMutation.mutateAsync,
     markAsRead,
     isFetchingConvs: getConversationsMutation.isPending,
     isCreatingConv: createConversationMutation.isPending,
@@ -261,5 +281,25 @@ export const useConversationService = () => {
     isMakingAdmin: makeAdminMutation.isPending,
     isLeavingGroup: leaveGroupMutation.isPending,
     isDisbandingGroup: disbandGroupMutation.isPending,
+    isRemovingConversation: removeConversationMutation.isPending,
   };
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (
+    error &&
+    typeof error === "object" &&
+    "response" in error &&
+    error.response &&
+    typeof error.response === "object" &&
+    "data" in error.response &&
+    error.response.data &&
+    typeof error.response.data === "object" &&
+    "message" in error.response.data &&
+    typeof error.response.data.message === "string"
+  ) {
+    return error.response.data.message;
+  }
+
+  return fallback;
 };

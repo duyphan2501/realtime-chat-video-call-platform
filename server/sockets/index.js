@@ -11,6 +11,15 @@ import { AuthService } from "../services/auth.service.js";
 export let io;
 export const getIo = () => io;
 
+const safeJsonParse = (value) => {
+  if (!value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
 export const initSocket = async (server, clientUrl) => {
   io = new Server(server, {
     pingTimeout: 60000,
@@ -27,7 +36,7 @@ export const initSocket = async (server, clientUrl) => {
 
     const userKey = `online_user:${userId}`;
 
-    await redisClient.sAdd("online_users", userId);
+    const wasAddedToOnlineSet = await redisClient.sAdd("online_users", userId);
     await redisClient.sAdd(userKey, socket.id);
 
     socket.join(`user_${userId}`);
@@ -35,13 +44,15 @@ export const initSocket = async (server, clientUrl) => {
     const allOnlineIds = await redisClient.sMembers("online_users");
     socket.emit("presence:online_users", { userIds: allOnlineIds });
 
-    socket.broadcast.emit("presence:online", { userId });
+    if (wasAddedToOnlineSet === 1) {
+      socket.broadcast.emit("presence:online", { userId });
+    }
     console.log(
       `Socket connected. User ID: ${userId}, Socket ID: ${socket.id}`,
     );
 
     const pendingCall = await redisClient.hGet("active_calls", userId);
-    const pendingCallData = JSON.parse(pendingCall);
+    const pendingCallData = safeJsonParse(pendingCall);
 
     if (pendingCallData) {
       const { startTime, callType, offer, conversationId, callerId } =
@@ -68,8 +79,8 @@ export const initSocket = async (server, clientUrl) => {
       );
       if (remainingSockets === 0) {
         const callDataRaw = await redisClient.hGet("active_calls", userId);
-        if (callDataRaw) {
-          const callData = JSON.parse(callDataRaw);
+        const callData = safeJsonParse(callDataRaw);
+        if (callData) {
           if (
             socket.id === callData.callerSocketId ||
             socket.id === callData.receiverSocketId

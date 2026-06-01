@@ -3,6 +3,7 @@ import createHttpError from "http-errors";
 import { filterFieldUser } from "../utils/filter.util.js";
 import { AuthService, UserService } from "../services/index.js";
 import { io } from "../sockets/index.js";
+import { uploadFiles } from "../helpers/upload.helper.js";
 
 /* ═══════════════════════════════════════════════════════════
    GET /users/me
@@ -389,11 +390,16 @@ export const updateAvatar = async (req, res, next) => {
     if (!userId) throw createHttpError.BadRequest("UserId is missing");
     if (!req.file) throw createHttpError.BadRequest("No file uploaded");
 
-    const avatarUrl = req.file.path;
+    const [uploadedAvatar] = await uploadFiles(req.file, {
+      folder: "avatars",
+      use_filename: true,
+      unique_filename: false,
+      overwrite: true,
+    });
 
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
-      { avatar: avatarUrl },
+      { avatar: uploadedAvatar.url },
       { new: true, runValidators: true },
     );
 

@@ -1,7 +1,16 @@
 import { useAPI } from "@/API/useAPI";
 import { useConversationStore, useMessageStore } from "@/store";
+import type { Attachment, Message } from "@/types";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+
+type SendMessagePayload = {
+  conversationId: string;
+  content: string;
+  files: File[];
+  tempId: string;
+  replyTo?: string;
+};
 
 export const useMessageService = () => {
   const api = useAPI().message;
@@ -30,12 +39,12 @@ export const useMessageService = () => {
         prependMessages(conversationId, data, hasMore, nextCursor);
       }
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error("Lỗi khi lấy tin nhắn:", error);
     },
   });
 
-  const fetchMessages = (conversationId: string, isLoadMore = false) => {
+  const fetchMessages = async (conversationId: string, isLoadMore = false) => {
     const currentMeta = meta[conversationId];
     const currentMsgs = messages[conversationId] || [];
 
@@ -47,7 +56,7 @@ export const useMessageService = () => {
       return;
     }
 
-    getMessagesMutation.mutate({
+    await getMessagesMutation.mutateAsync({
       conversationId,
       cursor: isLoadMore ? currentMeta?.nextCursor : null,
       limit: 20,
@@ -55,15 +64,9 @@ export const useMessageService = () => {
   };
 
   const sendMessageMutation = useMutation({
-    mutationFn: async (payload: {
-      conversationId: string;
-      content: string;
-      files: File[];
-      tempId: string;
-      replyTo?: string;
-    }) => {
+    mutationFn: async (payload: SendMessagePayload) => {
       const { content, files, conversationId, tempId } = payload;
-      let attachments = [];
+      const attachments: Attachment[] = [];
       let type = "text";
 
       // 1. Logic Upload Hỗn Hợp (Tự động tách bên trong)
@@ -101,21 +104,21 @@ export const useMessageService = () => {
     },
 
     onSuccess: (res) => {
-      const newMessage = res.data.data;
+      const newMessage = res.data.data as Message;
       useConversationStore.getState().bumpConversation(newMessage, 0);
-      addMessage(newMessage as any);
-      if (newMessage.attachments.length > 0) {
+      addMessage(newMessage);
+      if ((newMessage.attachments?.length ?? 0) > 0) {
         // Ép phần Info tải lại dữ liệu mới
         queryClient.invalidateQueries({
           queryKey: ["shared-content-infinite", newMessage.conversation],
         });
       }
     },
-    onError: (error: any, variables: any) => {
+    onError: (error: unknown, variables: SendMessagePayload) => {
       const { tempId } = variables;
       useMessageStore.getState().updateMessageStatus(tempId, "failed");
       console.group("🔴 LỖI GỬI TIN NHẮN (SEND MESSAGE ERROR)");
-      toast.error(error?.response?.data?.message);
+      toast.error(getErrorMessage(error));
       console.groupEnd();
       console.error("Lỗi khi gửi tin nhắn:", error);
     },
@@ -135,4 +138,23 @@ export const useMessageService = () => {
     messages,
     meta,
   };
+};
+
+const getErrorMessage = (error: unknown) => {
+  if (
+    error &&
+    typeof error === "object" &&
+    "response" in error &&
+    error.response &&
+    typeof error.response === "object" &&
+    "data" in error.response &&
+    error.response.data &&
+    typeof error.response.data === "object" &&
+    "message" in error.response.data &&
+    typeof error.response.data.message === "string"
+  ) {
+    return error.response.data.message;
+  }
+
+  return "Failed to send message";
 };

@@ -12,6 +12,10 @@ conversationRouter.get(
   ConversationController.getConversationMedia,
 );
 conversationRouter.post("/create", ConversationController.createConversation);
+conversationRouter.delete(
+  "/:conversationId",
+  ConversationController.removeConversation,
+);
 
 /* ── Group Management ─────────────────────────────── */
 conversationRouter.put("/:conversationId", ConversationController.updateGroup);

@@ -194,14 +194,14 @@ function fmtTime(iso?: string | Date): string {
 
   // 6. Trong cùng năm: 12/05
   if (d.getFullYear() === now.getFullYear()) {
-    return d.toLocaleDateString("en-US", {
+    return d.toLocaleDateString("vi-VN", {
       month: "2-digit",
       day: "2-digit",
     });
   }
 
   // 7. Khác năm: 12/05/2023
-  return d.toLocaleDateString("en-US", {
+  return d.toLocaleDateString("vi-VN", {
     month: "2-digit",
     day: "2-digit",
     year: "numeric",

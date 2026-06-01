@@ -16,10 +16,19 @@ const participantSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const hiddenForSchema = new mongoose.Schema(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    hiddenAt: { type: Date, default: Date.now },
+  },
+  { _id: false },
+);
+
 const conversationSchema = new mongoose.Schema(
   {
     type: { type: String, enum: ["direct", "group"], required: true },
     participants: { type: [participantSchema], required: true },
+    hiddenFor: { type: [hiddenForSchema], default: [] },
     name: { type: String, trim: true },
     avatar: { url: String, publicId: String },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

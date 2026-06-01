@@ -1,4 +1,5 @@
 import { AxiosInstance } from "axios";
+import type { Attachment } from "@/types";
 
 export const messageAPI = (axiosPrivate: AxiosInstance) => ({
   getMessages: ({
@@ -19,6 +20,6 @@ export const messageAPI = (axiosPrivate: AxiosInstance) => ({
     content: string;
     type: string;
     tempId: string;
-    attachments: string[];
+    attachments: Attachment[];
   }) => axiosPrivate.post("/messages/send", payload),
 });

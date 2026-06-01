@@ -1,33 +1,41 @@
 import cloudinary from "../config/cloudinary.config.js";
-import fs from "fs";
 
-async function uploadFiles(files, options) {
-  try {
-    // Nếu là single file (object) => biến thành mảng có 1 phần tử
-    const fileArray = Array.isArray(files) ? files : [files];
+const uploadBuffer = (file, options) =>
+  new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
+      if (error) {
+        reject(error);
+        return;
+      }
 
-    const uploadPromises = fileArray.map(async (file) => {
-      const result = await cloudinary.uploader.upload(file.path, options);
+      if (!result) {
+        reject(new Error("Cloudinary upload returned no result"));
+        return;
+      }
 
-      // Xóa file local sau khi upload thành công
-      fs.unlink(file.path, (err) => {
-        if (err) console.error("Error deleting file:", err);
-      });
-
-      return {
-        url: result.secure_url,
-        name: file.originalname,
-        publicId: result.public_id,
-        size: result.bytes,
-        format: result.format || file.originalname.split(".").pop(),
-        type: file.mimetype,
-      };
+      resolve(result);
     });
 
-    return await Promise.all(uploadPromises);
-  } catch (error) {
-    throw error;
-  }
+    stream.end(file.buffer);
+  });
+
+async function uploadFiles(files, options) {
+  const fileArray = Array.isArray(files) ? files : [files];
+
+  const uploadPromises = fileArray.map(async (file) => {
+    const result = await uploadBuffer(file, options);
+
+    return {
+      url: result.secure_url,
+      name: file.originalname,
+      publicId: result.public_id,
+      size: result.bytes,
+      format: result.format || file.originalname.split(".").pop(),
+      type: file.mimetype,
+    };
+  });
+
+  return Promise.all(uploadPromises);
 }
 
 export { uploadFiles };
