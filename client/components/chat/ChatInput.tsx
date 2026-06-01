@@ -7,7 +7,7 @@
    ③ File upload: files được pass qua onSend, backend dùng multer
    ═══════════════════════════════════════════════════════════ */
 "use client";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useMessageStore } from "@/store";
 import { useTyping } from "@/hooks/useTyping";
 import IconBtn from "../IconBtn";
@@ -69,6 +69,14 @@ export default function ChatInput({ convId, onSend, disabled }: Props) {
 
   const addFiles = (incoming: File[]) =>
     setFiles((prev) => [...prev, ...incoming]);
+
+  useEffect(() => {
+    if (files.length > 0) {
+      textareaRef.current?.focus();
+      const len = textareaRef.current?.value.length ?? 0;
+      textareaRef.current?.setSelectionRange(len, len);
+    }
+  }, [files.length]);
 
   return (
     <div className="bg-dark-secondary">

@@ -24,7 +24,6 @@ const getMessages = async ({
   const messLength = messages.length;
 
   const nextCursor = messLength > 0 ? messages[messLength - 1]._id : null;
-
   return {
     data: messages,
     nextCursor,

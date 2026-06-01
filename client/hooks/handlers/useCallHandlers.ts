@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useCallStore } from "@/store";
 import type { Socket } from "socket.io-client";
-import { CallStatus } from "@/types";
+import { CallMediaState, CallStatus, CallType, IncomingCall } from "@/types";
 
 export function useCallHandlers(socket: Socket | null) {
   // Giữ ref đến timer để có thể clear khi cần
@@ -10,7 +10,12 @@ export function useCallHandlers(socket: Socket | null) {
   useEffect(() => {
     if (!socket) return;
 
-    const onIncoming = (data: any) => {
+    const onIncoming = (data: {
+      incoming: IncomingCall;
+      conversationId: string;
+      callType: CallType;
+      startedAt: number;
+    }) => {
       const call = useCallStore.getState();
       call.setIncoming(data.incoming);
       call.setConversationId(data.conversationId);
@@ -49,10 +54,20 @@ export function useCallHandlers(socket: Socket | null) {
       useCallStore.getState().setStatus("busy");
     };
 
+    const onMediaState = ({
+      mediaState,
+    }: {
+      fromUserId: string;
+      mediaState: CallMediaState;
+    }) => {
+      useCallStore.getState().setPeerMediaState(mediaState);
+    };
+
     socket.on("call:incoming", onIncoming);
     socket.on("call:rejected", onRejected);
     socket.on("call:ended", onEnded);
     socket.on("call:user_busy", onUserBusy);
+    socket.on("call:media_state", onMediaState);
 
     return () => {
       // Truyền đúng function reference — chỉ xóa listener của hook này
@@ -60,6 +75,7 @@ export function useCallHandlers(socket: Socket | null) {
       socket.off("call:rejected", onRejected);
       socket.off("call:ended", onEnded);
       socket.off("call:user_busy", onUserBusy);
+      socket.off("call:media_state", onMediaState);
 
       // Clear timer treo nếu component unmount giữa chừng
       if (endedTimerRef.current) {

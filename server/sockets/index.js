@@ -20,6 +20,25 @@ const safeJsonParse = (value) => {
   }
 };
 
+const emitPendingCall = async (socket, userId) => {
+  const pendingCall = await redisClient.hGet("active_calls", userId);
+  const pendingCallData = safeJsonParse(pendingCall);
+  if (!pendingCallData) return;
+
+  const { startTime, callType, offer, conversationId, callerId, partnerId } =
+    pendingCallData;
+
+  if (userId !== partnerId) return;
+
+  const fromUser = await AuthService.getUserById(callerId);
+  socket.emit("call:incoming", {
+    incoming: { from: fromUser, offer },
+    startedAt: startTime,
+    callType,
+    conversationId,
+  });
+};
+
 export const initSocket = async (server, clientUrl) => {
   io = new Server(server, {
     pingTimeout: 60000,
@@ -51,25 +70,17 @@ export const initSocket = async (server, clientUrl) => {
       `Socket connected. User ID: ${userId}, Socket ID: ${socket.id}`,
     );
 
-    const pendingCall = await redisClient.hGet("active_calls", userId);
-    const pendingCallData = safeJsonParse(pendingCall);
-
-    if (pendingCallData) {
-      const { startTime, callType, offer, conversationId, callerId } =
-        pendingCallData;
-
-      const fromUser = await AuthService.getUserById(callerId);
-      io.to(`user_${userId}`).emit("call:incoming", {
-        incoming: { from: fromUser, offer },
-        startedAt: startTime,
-        callType,
-        conversationId,
-      });
-    }
-
     // Đăng ký các module logic
     registerChatHandlers(io, socket);
     registerWebRTCHandlers(io, socket);
+
+    socket.on("client:ready", async () => {
+      await emitPendingCall(socket, userId);
+    });
+
+    setTimeout(() => {
+      void emitPendingCall(socket, userId);
+    }, 300);
 
     socket.on("disconnect", async () => {
       await redisClient.sRem(userKey, socket.id);

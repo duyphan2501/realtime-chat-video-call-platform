@@ -44,6 +44,7 @@ export const ConversationService = {
     const match = {
       "participants.user": userId,
       "hiddenFor.user": { $ne: userId },
+      $or: [{ lastMessage: { $exists: true } }, { createdBy: userId }],
     };
     if (type === "direct" || type === "group") match.type = type;
 
@@ -486,12 +487,16 @@ export const ConversationService = {
     const updatedConversation =
       await getNormalizedConversationById(conversationId);
 
-    emitToConversationParticipants(updatedConversation, "group:memberPromoted", {
-      userId: targetUserId,
-      role: "admin",
-      conversation: updatedConversation,
-      systemMessage: systemMsg,
-    });
+    emitToConversationParticipants(
+      updatedConversation,
+      "group:memberPromoted",
+      {
+        userId: targetUserId,
+        role: "admin",
+        conversation: updatedConversation,
+        systemMessage: systemMsg,
+      },
+    );
 
     return updatedConversation;
   },

@@ -3,18 +3,64 @@
 import { useRef, useEffect, useCallback } from "react";
 import { useSocketStore, useCallStore, useConversationStore } from "@/store";
 import { useShallow } from "zustand/react/shallow";
-import { User } from "@/types";
+import { CallMediaState, CallType, User } from "@/types";
 
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
 ];
 
-export function useWebRTC() {
-  const pc = useRef<RTCPeerConnection | null>(null);
-  const iceCandidateQueue = useRef<RTCIceCandidateInit[]>([]);
+const pcRef: { current: RTCPeerConnection | null } = { current: null };
+const iceCandidateQueueRef: { current: RTCIceCandidateInit[] } = { current: [] };
 
-  // Lấy socket trực tiếp từ store để sync listener chính xác
+class MediaAccessError extends Error {
+  name: string;
+
+  constructor(error: unknown, fallbackMessage: string) {
+    const original = error as DOMException | Error | undefined;
+    super(original?.message || fallbackMessage);
+    this.name = original?.name || "MediaAccessError";
+  }
+}
+
+type LocalMediaResult = {
+  stream: MediaStream;
+  hasAudio: boolean;
+  hasVideo: boolean;
+  audioError: unknown;
+  videoError: unknown;
+};
+
+const getMediaErrorMessage = (error: unknown, kind: "audio" | "video") => {
+  const err = error as DOMException | Error | undefined;
+  if (!err) return null;
+
+  if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+    return kind === "audio"
+      ? "Microphone access was denied. Please allow microphone access and try again."
+      : "Camera access was denied. The call can continue with audio.";
+  }
+
+  if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+    return kind === "audio"
+      ? "No microphone was found. Please connect one and try again."
+      : "No camera was found. The call can continue with audio.";
+  }
+
+  return kind === "audio"
+    ? "Could not access microphone. Please check your device settings."
+    : "Could not access camera. The call can continue with audio.";
+};
+
+export function useWebRTC() {
+  const recoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const permissionStatusRefs = useRef<PermissionStatus[]>([]);
+  const isEndingRef = useRef(false);
+
   const socket = useSocketStore((s) => s.socket);
+  const mediaSignal = useCallStore(
+    (s) =>
+      `${s.status}:${s.isMuted}:${s.isCamOff}:${s.isCameraUnavailable}:${s.localStream?.id ?? ""}`,
+  );
 
   const {
     setStatus,
@@ -27,6 +73,10 @@ export function useWebRTC() {
     setRole,
     setRingStartedAt,
     setConversationId,
+    setMediaError,
+    setRecoveringMedia,
+    setMediaPermissions,
+    setCamOff,
   } = useCallStore(
     useShallow((s) => ({
       setStatus: s.setStatus,
@@ -34,65 +84,172 @@ export function useWebRTC() {
       setLocalStream: s.setLocalStream,
       setRemoteStream: s.setRemoteStream,
       setConversationId: s.setConversationId,
-      reset: s.reset,
       setCallType: s.setCallType,
       callType: s.callType,
       setStartTime: s.setStartTime,
       setRole: s.setRole,
       setRingStartedAt: s.setRingStartedAt,
+      setMediaError: s.setMediaError,
+      setRecoveringMedia: s.setRecoveringMedia,
+      setMediaPermissions: s.setMediaPermissions,
+      setCamOff: s.setCamOff,
     })),
   );
 
-  // Giữ canvas trong ref để tránh GC
-  const dummyCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const emitMediaState = useCallback(() => {
+    const { peerUser, localStream, isMuted, isCamOff, isCameraUnavailable } =
+      useCallStore.getState();
+    if (!socket || !peerUser?._id) return;
 
-  const createEmptyVideoTrack = useCallback(() => {
-    if (!dummyCanvasRef.current) {
-      const canvas = document.createElement("canvas");
-      canvas.width = 640;
-      canvas.height = 480;
-      dummyCanvasRef.current = canvas;
-    }
+    const mediaState: CallMediaState = {
+      hasAudio: Boolean(localStream?.getAudioTracks().some((t) => t.readyState === "live")),
+      hasVideo: Boolean(localStream?.getVideoTracks().some((t) => t.readyState === "live")),
+      isCameraUnavailable,
+      isMuted,
+      isCamOff,
+    };
 
-    const canvas = dummyCanvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#161625";
-      ctx.fillRect(0, 0, 640, 480);
-    }
+    socket.emit("call:media_state", {
+      targetUserId: peerUser._id,
+      mediaState,
+    });
+  }, [socket]);
 
-    return canvas.captureStream(0).getVideoTracks()[0]; // 0 fps = static frame, tiết kiệm CPU
-  }, []);
+  const replaceSenderTrack = useCallback(
+    async (kind: "audio" | "video", track: MediaStreamTrack | null) => {
+      const connection = pcRef.current;
+      if (!connection || connection.signalingState === "closed") return;
 
-  const getSafeMedia = useCallback(async (type: "audio" | "video") => {
-    try {
-      return await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: type === "video" ? { width: 1280, height: 720 } : false,
-      });
-    } catch (err: any) {
-      console.warn("Media Error, falling back to dummy video:", err.name);
+      const kindSender =
+        connection.getSenders().find((sender) => sender.track?.kind === kind) ??
+        connection
+          .getTransceivers()
+          .find((transceiver) => transceiver.receiver.track.kind === kind)
+          ?.sender;
+
+      if (kindSender) {
+        await kindSender.replaceTrack(track);
+        return;
+      }
+
+      if (track) {
+        const { localStream } = useCallStore.getState();
+        connection.addTrack(track, localStream ?? new MediaStream([track]));
+      }
+    },
+    [],
+  );
+
+  const attachTrackLifecycle = useCallback(
+    (track: MediaStreamTrack) => {
+      track.onended = () => {
+        if (track.kind === "video") {
+          setMediaPermissions({
+            hasVideoPermission: false,
+            isCameraUnavailable: true,
+          });
+          setCamOff(true);
+          setMediaError("Camera access changed. Trying to restore video...");
+          void replaceSenderTrack("video", null).then(emitMediaState);
+        } else {
+          setMediaPermissions({ hasAudioPermission: false });
+          setMediaError("Microphone access changed. Please allow microphone access to continue.");
+          void replaceSenderTrack("audio", null).then(emitMediaState);
+        }
+      };
+    },
+    [emitMediaState, replaceSenderTrack, setCamOff, setMediaError, setMediaPermissions],
+  );
+
+  const acquireLocalMedia = useCallback(
+    async (type: CallType): Promise<LocalMediaResult> => {
+      const tracks: MediaStreamTrack[] = [];
+      let audioError: unknown = null;
+      let videoError: unknown = null;
+
       try {
         const audioStream = await navigator.mediaDevices.getUserMedia({
           audio: true,
+          video: false,
         });
-        audioStream.addTrack(createEmptyVideoTrack());
-        return audioStream;
-      } catch {
-        return new MediaStream([createEmptyVideoTrack()]);
+        tracks.push(...audioStream.getAudioTracks());
+      } catch (error) {
+        audioError = error;
       }
-    }
-  }, []);
+
+      if (type === "video") {
+        try {
+          const videoStream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { width: 1280, height: 720 },
+          });
+          tracks.push(...videoStream.getVideoTracks());
+        } catch (error) {
+          videoError = error;
+        }
+      }
+
+      const stream = new MediaStream(tracks);
+      const hasAudio = stream.getAudioTracks().length > 0;
+      const hasVideo = stream.getVideoTracks().length > 0;
+
+      if (!hasAudio) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw new MediaAccessError(
+          audioError,
+          "Microphone access is required to start a call.",
+        );
+      }
+
+      stream.getTracks().forEach(attachTrackLifecycle);
+
+      setMediaPermissions({
+        hasAudioPermission: hasAudio,
+        hasVideoPermission: type === "video" ? hasVideo : true,
+        isCameraUnavailable: type === "video" && !hasVideo,
+      });
+      setCamOff(type === "video" && !hasVideo);
+      setMediaError(type === "video" ? getMediaErrorMessage(videoError, "video") : null);
+
+      return {
+        stream,
+        hasAudio,
+        hasVideo,
+        audioError,
+        videoError,
+      };
+    },
+    [attachTrackLifecycle, setCamOff, setMediaError, setMediaPermissions],
+  );
+
+  const mergeLocalStream = useCallback((newTracks: MediaStreamTrack[]) => {
+    const { localStream } = useCallStore.getState();
+    const nextStream = localStream ?? new MediaStream();
+
+    newTracks.forEach((track) => {
+      nextStream.getTracks().forEach((existingTrack) => {
+        if (existingTrack.kind === track.kind && existingTrack.id !== track.id) {
+          existingTrack.stop();
+          nextStream.removeTrack(existingTrack);
+        }
+      });
+      nextStream.addTrack(track);
+    });
+
+    setLocalStream(nextStream);
+    return nextStream;
+  }, [setLocalStream]);
 
   const flushIceQueue = useCallback(async () => {
-    // Chỉ flush khi Remote Description đã được thiết lập thành công
-    if (!pc.current?.remoteDescription) return;
+    if (!pcRef.current?.remoteDescription) return;
 
-    while (iceCandidateQueue.current.length > 0) {
-      const candidate = iceCandidateQueue.current.shift()!;
+    while (iceCandidateQueueRef.current.length > 0) {
+      const candidate = iceCandidateQueueRef.current.shift();
+      if (!candidate) continue;
+
       try {
-        if (pc.current.signalingState !== "closed") {
-          await pc.current.addIceCandidate(new RTCIceCandidate(candidate));
+        if (pcRef.current.signalingState !== "closed") {
+          await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
         }
       } catch (err) {
         console.warn("Flush ICE candidate failed:", err);
@@ -101,66 +258,167 @@ export function useWebRTC() {
   }, []);
 
   const createPC = useCallback(() => {
-    // Dọn dẹp instance cũ trước khi tạo mới để tránh rò rỉ bộ nhớ & event
-    if (pc.current) {
-      pc.current.onicecandidate = null;
-      pc.current.ontrack = null;
-      pc.current.close();
+    if (pcRef.current) {
+      pcRef.current.onicecandidate = null;
+      pcRef.current.ontrack = null;
+      pcRef.current.onconnectionstatechange = null;
+      pcRef.current.close();
     }
 
-    iceCandidateQueue.current = [];
-    const conn = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    iceCandidateQueueRef.current = [];
+    const connection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
-    conn.onicecandidate = (e) => {
-      if (e.candidate && socket) {
+    connection.onicecandidate = (event) => {
+      if (event.candidate && socket) {
         const { peerUser } = useCallStore.getState();
+        if (!peerUser?._id) return;
+
         socket.emit("webrtc:ice_candidate", {
-          targetUserId: peerUser?._id,
-          candidate: e.candidate,
+          targetUserId: peerUser._id,
+          candidate: event.candidate,
         });
       }
     };
 
-    conn.onconnectionstatechange = () => {
-      if (conn.connectionState === "connected") {
-        // Cuộc gọi thực sự bắt đầu nghe được tiếng/hình
-        setStartTime(Date.now());
+    connection.onconnectionstatechange = () => {
+      if (connection.connectionState === "connected") {
+        const { startTime } = useCallStore.getState();
+        if (!startTime) setStartTime(Date.now());
+        setStatus("connected");
       }
     };
 
-    conn.ontrack = (e) => {
-      if (e.streams[0]) setRemoteStream(e.streams[0]);
+    connection.ontrack = (event) => {
+      if (event.streams[0]) setRemoteStream(event.streams[0]);
     };
 
-    pc.current = conn;
-    return conn;
-  }, [socket, setRemoteStream]);
+    pcRef.current = connection;
+    return connection;
+  }, [setRemoteStream, setStartTime, setStatus, socket]);
 
-  // --- Actions ---
+  const prepareSenders = useCallback(
+    (connection: RTCPeerConnection, type: CallType, stream: MediaStream) => {
+      const audioTrack = stream.getAudioTracks()[0];
+      if (audioTrack) connection.addTrack(audioTrack, stream);
+
+      if (type === "video") {
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) connection.addTrack(videoTrack, stream);
+        else connection.addTransceiver("video", { direction: "sendrecv" });
+      }
+    },
+    [],
+  );
+
+  const recoverLocalMedia = useCallback(async () => {
+    const {
+      callType: currentCallType,
+      status,
+      isCamOff,
+      isCameraUnavailable,
+    } = useCallStore.getState();
+    if (!currentCallType || !["calling", "connected"].includes(status)) return;
+
+    const keepCameraOff =
+      currentCallType === "video" && isCamOff && !isCameraUnavailable;
+
+    setRecoveringMedia(true);
+
+    try {
+      const result = await acquireLocalMedia(currentCallType);
+      if (keepCameraOff) {
+        result.stream.getVideoTracks().forEach((track) => {
+          track.enabled = false;
+        });
+        setCamOff(true);
+      }
+      mergeLocalStream(result.stream.getTracks());
+
+      await replaceSenderTrack("audio", result.stream.getAudioTracks()[0] ?? null);
+      if (currentCallType === "video") {
+        await replaceSenderTrack("video", result.stream.getVideoTracks()[0] ?? null);
+      }
+
+      if (result.hasVideo || currentCallType === "audio") setMediaError(null);
+      emitMediaState();
+    } catch (error) {
+      setMediaError(getMediaErrorMessage(error, "audio"));
+      throw error;
+    } finally {
+      setRecoveringMedia(false);
+    }
+  }, [
+    acquireLocalMedia,
+    emitMediaState,
+    mergeLocalStream,
+    replaceSenderTrack,
+    setCamOff,
+    setMediaError,
+    setRecoveringMedia,
+  ]);
+
+  const setCameraEnabled = useCallback(
+    async (enabled: boolean) => {
+      const { localStream, callType: currentCallType } = useCallStore.getState();
+      if (currentCallType !== "video") return;
+
+      if (!enabled) {
+        localStream?.getVideoTracks().forEach((track) => {
+          track.enabled = false;
+        });
+        setCamOff(true);
+        emitMediaState();
+        return;
+      }
+
+      const liveVideoTrack = localStream
+        ?.getVideoTracks()
+        .find((track) => track.readyState === "live");
+
+      if (liveVideoTrack) {
+        liveVideoTrack.enabled = true;
+        setCamOff(false);
+        setMediaPermissions({
+          hasVideoPermission: true,
+          isCameraUnavailable: false,
+        });
+        setMediaError(null);
+        emitMediaState();
+        return;
+      }
+
+      await recoverLocalMedia();
+      const restoredTrack = useCallStore
+        .getState()
+        .localStream?.getVideoTracks()
+        .find((track) => track.readyState === "live");
+      if (restoredTrack) {
+        restoredTrack.enabled = true;
+        setCamOff(false);
+        setMediaError(null);
+      }
+      emitMediaState();
+    },
+    [emitMediaState, recoverLocalMedia, setCamOff, setMediaError, setMediaPermissions],
+  );
+
   const startCall = useCallback(
-    async (targetUserId: string, type: "audio" | "video") => {
+    async (targetUserId: string, type: CallType) => {
       try {
         setStatus("connecting");
         setRole("caller");
         setCallType(type);
-        const conn = createPC();
-        const stream = await getSafeMedia(type);
-        setLocalStream(stream);
+        setPeerUser({ _id: targetUserId, name: "", avatar: "" });
 
-        // Add audio tracks
-        stream.getAudioTracks().forEach((t) => conn.addTrack(t, stream));
+        const connection = createPC();
+        const result = await acquireLocalMedia(type);
+        setLocalStream(result.stream);
+        prepareSenders(connection, type, result.stream);
 
-        // Add video track — dùng dummy nếu không có track thực
-        if (type === "video") {
-          const videoTrack =
-            stream.getVideoTracks()[0] ?? createEmptyVideoTrack();
-          conn.addTrack(videoTrack, stream);
-        }
+        const offer = await connection.createOffer();
+        await connection.setLocalDescription(offer);
 
-        const offer = await conn.createOffer();
-        await conn.setLocalDescription(offer);
         const now = Date.now();
-        
         const conversationId = useConversationStore.getState().activeId;
         setConversationId(conversationId);
 
@@ -173,13 +431,30 @@ export function useWebRTC() {
         });
         setRingStartedAt(now);
         setStatus("calling");
+        emitMediaState();
       } catch (err) {
         console.error("Start call failed:", err);
         setStatus("idle");
         setLocalStream(null);
+        setMediaError(getMediaErrorMessage(err, "audio"));
+        throw err;
       }
     },
-    [getSafeMedia, createPC, socket],
+    [
+      acquireLocalMedia,
+      createPC,
+      emitMediaState,
+      prepareSenders,
+      setCallType,
+      setConversationId,
+      setLocalStream,
+      setMediaError,
+      setPeerUser,
+      setRingStartedAt,
+      setRole,
+      setStatus,
+      socket,
+    ],
   );
 
   const acceptCall = useCallback(async () => {
@@ -187,66 +462,69 @@ export function useWebRTC() {
     if (!incoming) return;
 
     try {
-      const stream = await getSafeMedia(callType ?? "audio");
-      setLocalStream(stream);
-      const conn = createPC();
+      const type = callType ?? "audio";
+      const result = await acquireLocalMedia(type);
+      setLocalStream(result.stream);
 
-      // Tương tự startCall — đảm bảo video track luôn có trong SDP
-      stream.getAudioTracks().forEach((t) => conn.addTrack(t, stream));
-      if (callType === "video") {
-        const videoTrack =
-          stream.getVideoTracks()[0] ?? createEmptyVideoTrack();
-        conn.addTrack(videoTrack, stream);
-      }
+      const connection = createPC();
+      prepareSenders(connection, type, result.stream);
       setRole("callee");
       setPeerUser(incoming.from);
 
-      await conn.setRemoteDescription(
-        new RTCSessionDescription(incoming.offer),
-      );
+      await connection.setRemoteDescription(new RTCSessionDescription(incoming.offer));
       await flushIceQueue();
 
-      const answer = await conn.createAnswer();
-      await conn.setLocalDescription(answer);
+      const answer = await connection.createAnswer();
+      await connection.setLocalDescription(answer);
 
       socket?.emit("webrtc:answer", {
         targetUserId: incoming.from._id,
         answer,
       });
       setStatus("calling");
+      emitMediaState();
     } catch (err) {
       console.error("Accept call failed:", err);
+      setMediaError(getMediaErrorMessage(err, "audio"));
+      throw err;
     }
-  }, [getSafeMedia, createPC, flushIceQueue, socket, callType]);
-
-  // endCall — thêm flag isEnding để tránh chạy 2 lần
-  const isEndingRef = useRef(false);
+  }, [
+    acquireLocalMedia,
+    callType,
+    createPC,
+    emitMediaState,
+    flushIceQueue,
+    prepareSenders,
+    setLocalStream,
+    setMediaError,
+    setPeerUser,
+    setRole,
+    setStatus,
+    socket,
+  ]);
 
   const endCall = useCallback(() => {
     if (isEndingRef.current) return;
     isEndingRef.current = true;
 
     const { localStream } = useCallStore.getState();
+    localStream?.getTracks().forEach((track) => track.stop());
 
-    localStream?.getTracks().forEach((t) => t.stop());
-
-    if (pc.current) {
-      pc.current.onicecandidate = null;
-      pc.current.ontrack = null;
-      pc.current.close();
-      pc.current = null;
+    if (pcRef.current) {
+      pcRef.current.onicecandidate = null;
+      pcRef.current.ontrack = null;
+      pcRef.current.onconnectionstatechange = null;
+      pcRef.current.close();
+      pcRef.current = null;
     }
 
-    iceCandidateQueue.current = [];
-    dummyCanvasRef.current = null;
+    iceCandidateQueueRef.current = [];
 
-    // Reset flag sau một tick để tránh block lần end tiếp theo
     setTimeout(() => {
       isEndingRef.current = false;
     }, 100);
-  }, [socket]);
+  }, []);
 
-  // --- Socket Listeners ---
   useEffect(() => {
     if (!socket) return;
 
@@ -257,24 +535,18 @@ export function useWebRTC() {
       answer: RTCSessionDescriptionInit;
       peerUser: User;
     }) => {
-      const connection = pc.current;
+      const connection = pcRef.current;
       setPeerUser(peerUser);
-      // FIX: Chặn lỗi 'stable' bằng cách kiểm tra signalingState
-      // Chỉ thực hiện setRemoteDescription nếu đang ở trạng thái 'have-local-offer'
       if (!connection || connection.signalingState !== "have-local-offer") {
-        console.warn(
-          `Bỏ qua answer. Trạng thái hiện tại: ${connection?.signalingState}`,
-        );
+        console.warn(`Skip answer. Current state: ${connection?.signalingState}`);
         return;
       }
 
       try {
-        await connection.setRemoteDescription(
-          new RTCSessionDescription(answer),
-        );
+        await connection.setRemoteDescription(new RTCSessionDescription(answer));
         await flushIceQueue();
       } catch (err) {
-        console.error("Lỗi khi setRemoteDescription (answer):", err);
+        console.error("Failed to set answer remote description:", err);
       }
     };
 
@@ -283,19 +555,15 @@ export function useWebRTC() {
     }: {
       candidate: RTCIceCandidateInit;
     }) => {
-      const connection = pc.current;
-      if (
-        connection?.remoteDescription &&
-        connection.signalingState !== "closed"
-      ) {
+      const connection = pcRef.current;
+      if (connection?.remoteDescription && connection.signalingState !== "closed") {
         try {
           await connection.addIceCandidate(new RTCIceCandidate(candidate));
         } catch (err) {
-          console.warn("addIceCandidate trực tiếp thất bại:", err);
+          console.warn("addIceCandidate failed:", err);
         }
       } else {
-        // Lưu vào hàng đợi nếu Remote Description chưa sẵn sàng
-        iceCandidateQueue.current.push(candidate);
+        iceCandidateQueueRef.current.push(candidate);
       }
     };
 
@@ -306,7 +574,51 @@ export function useWebRTC() {
       socket.off("webrtc:answer", onAnswer);
       socket.off("webrtc:ice_candidate", onIceCandidate);
     };
-  }, [socket, flushIceQueue]);
+  }, [flushIceQueue, setPeerUser, socket]);
+
+  useEffect(() => {
+    const { status } = useCallStore.getState();
+    if (status === "calling" || status === "connected") emitMediaState();
+  }, [emitMediaState, mediaSignal]);
+
+  useEffect(() => {
+    const scheduleRecovery = () => {
+      if (recoveryTimerRef.current) clearTimeout(recoveryTimerRef.current);
+      recoveryTimerRef.current = setTimeout(() => {
+        void recoverLocalMedia().catch(() => undefined);
+      }, 500);
+    };
+
+    navigator.mediaDevices?.addEventListener?.("devicechange", scheduleRecovery);
+
+    const watchPermissions = async () => {
+      if (!navigator.permissions?.query) return;
+
+      const permissionNames = ["camera", "microphone"] as PermissionName[];
+      const statuses = await Promise.allSettled(
+        permissionNames.map((name) => navigator.permissions.query({ name })),
+      );
+
+      permissionStatusRefs.current = statuses
+        .filter((result): result is PromiseFulfilledResult<PermissionStatus> => result.status === "fulfilled")
+        .map((result) => result.value);
+
+      permissionStatusRefs.current.forEach((permissionStatus) => {
+        permissionStatus.onchange = scheduleRecovery;
+      });
+    };
+
+    void watchPermissions();
+
+    return () => {
+      if (recoveryTimerRef.current) clearTimeout(recoveryTimerRef.current);
+      navigator.mediaDevices?.removeEventListener?.("devicechange", scheduleRecovery);
+      permissionStatusRefs.current.forEach((permissionStatus) => {
+        permissionStatus.onchange = null;
+      });
+      permissionStatusRefs.current = [];
+    };
+  }, [recoverLocalMedia]);
 
   useEffect(() => {
     return () => {
@@ -314,5 +626,11 @@ export function useWebRTC() {
     };
   }, [endCall]);
 
-  return { startCall, endCall, acceptCall };
+  return {
+    startCall,
+    endCall,
+    acceptCall,
+    recoverLocalMedia,
+    setCameraEnabled,
+  };
 }

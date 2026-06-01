@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import ControlButton from "@/components/ControlButton";
 import { useCallStore } from "@/store";
-import { useRingCountdown } from "@/hooks";
+import { useRingCountdown, useWebRTC } from "@/hooks";
 import ConnectingScreen from "./ConnectingScreen";
 import EndedScreen from "./EndedScreen";
 import { formatTime } from "@/utils/call.utils";
@@ -29,12 +29,20 @@ export default function VideoCall() {
   const remoteStream = useCallStore((s) => s.remoteStream);
   const isMuted = useCallStore((s) => s.isMuted);
   const isCamOff = useCallStore((s) => s.isCamOff);
+  const isCameraUnavailable = useCallStore((s) => s.isCameraUnavailable);
+  const isRecoveringMedia = useCallStore((s) => s.isRecoveringMedia);
+  const mediaError = useCallStore((s) => s.mediaError);
+  const peerMediaState = useCallStore((s) => s.peerMediaState);
   const toggleMute = useCallStore((s) => s.toggleMute);
-  const toggleCam = useCallStore((s) => s.toggleCam);
   const startTime = useCallStore((s) => s.startTime);
 
   const [duration, setDuration] = useState(0);
   const waitTimeLeft = useRingCountdown(30);
+  const {
+    recoverLocalMedia,
+    setCameraEnabled,
+    endCall: endLocalCall,
+  } = useWebRTC();
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -49,6 +57,7 @@ export default function VideoCall() {
       if (!callType) return;
 
       setStatus(reason);
+      endLocalCall();
 
       try {
         if (reason === "ended") {
@@ -66,7 +75,7 @@ export default function VideoCall() {
         endedTimerRef.current = null;
       }, 2000);
     },
-    [endCallAPI, rejectCall],
+    [endCallAPI, endLocalCall, rejectCall],
   );
 
   // Cleanup timer on unmount
@@ -124,10 +133,18 @@ export default function VideoCall() {
     else handleTerminateCall({ reason: "ended" });
   };
 
+  const handleToggleCamera = async () => {
+    try {
+      await setCameraEnabled(isCamOff || isCameraUnavailable);
+    } catch (error) {
+      console.error("Failed to toggle camera:", error);
+    }
+  };
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
-    if (startTime && status === "calling") {
+    if (startTime && (status === "calling" || status === "connected")) {
       interval = setInterval(() => {
         const seconds = Math.floor((Date.now() - startTime) / 1000);
         setDuration(seconds);
@@ -150,6 +167,14 @@ export default function VideoCall() {
   }
 
   if (status !== "calling" && status !== "connected") return null;
+
+  const hasLocalVideo = Boolean(
+    localStream?.getVideoTracks().some((track) => track.readyState === "live"),
+  );
+  const isPeerCameraOff =
+    peerMediaState?.isCamOff ||
+    peerMediaState?.isCameraUnavailable ||
+    peerMediaState?.hasVideo === false;
 
   // ── Active call UI ───────────────────────────────────────────────────────────
   return (
@@ -217,6 +242,15 @@ export default function VideoCall() {
           )}
 
           {/* PiP — local video */}
+          {remoteStream && isPeerCameraOff && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-surface">
+              <VideoOff className="w-8 h-8 text-ink-4" />
+              <p className="px-4 text-center text-[13px] font-medium text-white/60">
+                {peerUser?.name || "Peer"} camera is off
+              </p>
+            </div>
+          )}
+
           <div className="absolute right-2 top-2 z-20 aspect-video w-[clamp(7rem,32vw,11rem)] overflow-hidden rounded-2xl border border-white/10 bg-[#111118] shadow-xl shadow-black/50 sm:right-4 sm:top-4 sm:rounded-[20px]">
             <video
               ref={localVideoRef}
@@ -227,7 +261,7 @@ export default function VideoCall() {
             />
 
             {/* Overlay when no stream yet */}
-            {!localStream && (
+            {(!hasLocalVideo || isCameraUnavailable) && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-[#111118] px-3 text-center">
                 <VideoOff className="w-5 h-5 text-white/20" />
                 <p className="text-[9px] text-white/25 leading-snug">
@@ -250,6 +284,28 @@ export default function VideoCall() {
         </div>
 
         {/* Control bar */}
+        {(mediaError || isRecoveringMedia) && (
+          <div className="absolute left-1/2 top-4 z-30 flex max-w-[calc(100dvw-2rem)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-warning/25 bg-surface/95 px-4 py-3 text-xs text-white shadow-lg backdrop-blur-md">
+            {isRecoveringMedia ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-warning" />
+            ) : (
+              <VideoOff className="h-4 w-4 shrink-0 text-warning" />
+            )}
+            <span className="min-w-0 text-white/70">
+              {isRecoveringMedia ? "Restoring camera and microphone..." : mediaError}
+            </span>
+            {!isRecoveringMedia && (
+              <button
+                type="button"
+                onClick={() => void recoverLocalMedia().catch(() => undefined)}
+                className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-brand-hover"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 flex max-w-[calc(100dvw-1rem)] -translate-x-1/2 items-start gap-2 overflow-x-auto rounded-2xl border border-white/6 bg-[#111118]/90 px-3 py-3 shadow-2xl shadow-black/50 backdrop-blur-2xl sm:bottom-8 sm:gap-3 sm:rounded-[28px] sm:px-6 sm:py-4">
           <ControlButton
             icon={<Mic className="w-5 h-5" />}
@@ -261,9 +317,10 @@ export default function VideoCall() {
           <ControlButton
             icon={<VideoIcon className="w-5 h-5" />}
             activeIcon={<VideoOff className="w-5 h-5" />}
-            active={isCamOff}
-            onClick={toggleCam}
-            label={isCamOff ? "Start Camera" : "Stop Camera"}
+            active={isCamOff || isCameraUnavailable}
+            onClick={handleToggleCamera}
+            disabled={isRecoveringMedia}
+            label={isCamOff || isCameraUnavailable ? "Start Camera" : "Stop Camera"}
           />
 
           <div className="h-full w-px bg-white/8 mx-1" />

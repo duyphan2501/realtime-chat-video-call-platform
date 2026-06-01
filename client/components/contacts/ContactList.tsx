@@ -261,6 +261,7 @@ export default function ContactList({
                       onAccept={() => handleAccept(user)}
                       onReject={() => handleReject(user)}
                       onCancel={() => handleCancel(user)}
+                      onStartChat={onStartChat}
                       onClick={() => onSelect(user)}
                     />
                   ))}
