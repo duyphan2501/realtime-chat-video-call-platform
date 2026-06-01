@@ -8,11 +8,35 @@ import { io } from "../sockets/index.js";
 const getParticipantUserId = (participant) =>
   participant.user?._id?.toString() || participant.user?.toString();
 
+const normalizeConversation = (conversation) => {
+  const plainConversation =
+    typeof conversation?.toObject === "function"
+      ? conversation.toObject()
+      : conversation;
+
+  return {
+    ...plainConversation,
+    avatar: plainConversation?.avatar?.url || plainConversation?.avatar,
+  };
+};
+
 const emitToConversationParticipants = (conversation, eventName, payload) => {
   conversation.participants.forEach((participant) => {
     const participantId = getParticipantUserId(participant);
     if (participantId) io.to(`user_${participantId}`).emit(eventName, payload);
   });
+};
+
+const getNormalizedConversationById = async (conversationId) => {
+  const conversation = await ConversationModel.findById(conversationId)
+    .populate("participants.user", "_id name avatar")
+    .populate({
+      path: "lastMessage",
+      populate: { path: "sender", select: "_id name avatar" },
+    })
+    .lean();
+
+  return normalizeConversation(conversation);
 };
 
 export const ConversationService = {
@@ -135,13 +159,13 @@ export const ConversationService = {
       createdBy: creatorId,
       lastMessageAt: new Date(),
     });
-    conversation.avatar = conversation.avatar?.url || undefined;
 
     if (type === "group") {
       const fullConversation = await conversation.populate([
         { path: "participants.user", select: "_id name avatar" },
         { path: "createdBy", select: "_id name avatar" },
       ]);
+      const normalizedConversation = normalizeConversation(fullConversation);
 
       // 2. Tạo tin nhắn hệ thống (System Message)
       const systemContent = `Group created by ${fullConversation.createdBy.name}`;
@@ -155,7 +179,7 @@ export const ConversationService = {
       // 3. Bắn Socket thông báo cho tất cả thành viên (additional notifications beyond the system message)
       participantIds.forEach((id) => {
         // Thông báo có nhóm mới
-        io.to(`user_${id}`).emit("conversation:new", fullConversation);
+        io.to(`user_${id}`).emit("conversation:new", normalizedConversation);
 
         // Thông báo có tin nhắn mới (tin nhắn hệ thống) - this is already handled by createSystemMessage
         // io.to(`user_${id}`).emit("message:new", {
@@ -165,7 +189,7 @@ export const ConversationService = {
       });
     }
 
-    return conversation;
+    return normalizeConversation(conversation);
   },
 
   getConversationMedia: async ({ conversationId, tab, limit, skip }) => {
@@ -280,14 +304,15 @@ export const ConversationService = {
       );
     }
 
-    const updatedConversation = await ConversationModel.findByIdAndUpdate(
+    const updatedConversationDoc = await ConversationModel.findByIdAndUpdate(
       conversationId,
       updateData,
       { new: true },
     )
       .populate("participants.user", "_id name avatar")
-      .populate("lastMessage")
+      .populate("lastMessage");
 
+    const updatedConversation = normalizeConversation(updatedConversationDoc);
     emitToConversationParticipants(
       updatedConversation,
       "group:updated",
@@ -326,7 +351,7 @@ export const ConversationService = {
     const adderUser = await AuthService.getUserById(userId);
     const newMember = await AuthService.getUserById(newMemberId);
 
-    const updatedConversation = await ConversationModel.findByIdAndUpdate(
+    await ConversationModel.findByIdAndUpdate(
       conversationId,
       {
         $push: {
@@ -340,7 +365,7 @@ export const ConversationService = {
         },
       },
       { new: true },
-    ).populate("participants.user", "_id name avatar");
+    );
 
     // Create system message for group event
     const systemContent = `${adderUser.name} added ${newMember.name} to the group`;
@@ -350,6 +375,9 @@ export const ConversationService = {
       senderId: userId,
       content: systemContent,
     });
+
+    const updatedConversation =
+      await getNormalizedConversationById(conversationId);
 
     emitToConversationParticipants(updatedConversation, "group:memberAdded", {
       newMemberId,
@@ -387,11 +415,11 @@ export const ConversationService = {
     const removerUser = await AuthService.getUserById(userId);
     const removedUser = await AuthService.getUserById(memberToRemoveId);
 
-    const updatedConversation = await ConversationModel.findByIdAndUpdate(
+    await ConversationModel.findByIdAndUpdate(
       conversationId,
       { $pull: { participants: { user: memberToRemoveId } } },
       { new: true },
-    ).populate("participants.user", "_id name avatar");
+    );
 
     // Create system message for group event
     const systemContent = `${removerUser.name} removed ${removedUser.name} from the group`;
@@ -401,6 +429,9 @@ export const ConversationService = {
       senderId: userId,
       content: systemContent,
     });
+
+    const updatedConversation =
+      await getNormalizedConversationById(conversationId);
 
     emitToConversationParticipants(updatedConversation, "group:memberRemoved", {
       removedUserId: memberToRemoveId,
@@ -434,14 +465,14 @@ export const ConversationService = {
     const requesterUser = await AuthService.getUserById(requestUserId);
     const targetUser = await AuthService.getUserById(targetUserId);
 
-    const updatedConversation = await ConversationModel.findOneAndUpdate(
+    await ConversationModel.findOneAndUpdate(
       {
         _id: conversationId,
         "participants.user": targetUserId,
       },
       { $set: { "participants.$.role": "admin" } },
       { new: true },
-    ).populate("participants.user", "_id name avatar");
+    );
 
     // Create system message for group event
     const systemContent = `${requesterUser.name} made ${targetUser.name} an admin`;
@@ -451,6 +482,9 @@ export const ConversationService = {
       senderId: requestUserId,
       content: systemContent,
     });
+
+    const updatedConversation =
+      await getNormalizedConversationById(conversationId);
 
     emitToConversationParticipants(updatedConversation, "group:memberPromoted", {
       userId: targetUserId,
@@ -480,14 +514,14 @@ export const ConversationService = {
     const requesterUser = await AuthService.getUserById(requestUserId);
     const targetUser = await AuthService.getUserById(targetUserId);
 
-    const updatedConversation = await ConversationModel.findOneAndUpdate(
+    await ConversationModel.findOneAndUpdate(
       {
         _id: conversationId,
         "participants.user": targetUserId,
       },
       { $set: { "participants.$.role": "member" } },
       { new: true },
-    ).populate("participants.user", "_id name avatar");
+    );
 
     // Create system message for group event
     const systemContent = `${requesterUser.name} removed ${targetUser.name} as admin`;
@@ -497,6 +531,9 @@ export const ConversationService = {
       senderId: requestUserId,
       content: systemContent,
     });
+
+    const updatedConversation =
+      await getNormalizedConversationById(conversationId);
 
     emitToConversationParticipants(updatedConversation, "group:adminRemoved", {
       userId: targetUserId,
@@ -545,8 +582,6 @@ export const ConversationService = {
           "New owner must be a current member of the group",
         );
       }
-      // Get new owner details
-      const newOwnerUser = await AuthService.getUserById(newOwnerId);
       // Promote new owner
       await ConversationModel.updateOne(
         { _id: conversationId, "participants.user": newOwnerId },
@@ -554,11 +589,11 @@ export const ConversationService = {
       );
     }
 
-    const updatedConversation = await ConversationModel.findByIdAndUpdate(
+    await ConversationModel.findByIdAndUpdate(
       conversationId,
       { $pull: { participants: { user: userId } } },
       { new: true },
-    ).populate("participants.user", "_id name avatar");
+    );
 
     // Create system message for group event
     const systemContent = `${leavingUser.name} left the group`;
@@ -568,6 +603,9 @@ export const ConversationService = {
       senderId: userId,
       content: systemContent,
     });
+
+    const updatedConversation =
+      await getNormalizedConversationById(conversationId);
 
     emitToConversationParticipants(updatedConversation, "group:memberLeft", {
       userId,

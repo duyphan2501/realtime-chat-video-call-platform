@@ -67,10 +67,10 @@ export function useGroupHandlers(socket: Socket | null) {
         .updateConversation(data.conversation._id, data.conversation);
     };
 
-    const onGroupUpdated = (data: any) => {
+    const onGroupUpdated = (data: Conversation) => {
       useConversationStore.getState().updateConversation(data._id, {
         name: data.name,
-        avatar: data.avatar?.url || data.avatar,
+        avatar: data.avatar,
         participants: data.participants,
       });
     };
