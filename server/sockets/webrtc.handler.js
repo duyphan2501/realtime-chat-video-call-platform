@@ -79,4 +79,12 @@ export default (io, socket) => {
   socket.on("webrtc:ice_candidate", ({ targetUserId, candidate }) => {
     io.to(`user_${targetUserId}`).emit("webrtc:ice_candidate", { candidate });
   });
+
+  socket.on("call:media_state", ({ targetUserId, mediaState }) => {
+    if (!targetUserId || !mediaState) return;
+    io.to(`user_${targetUserId}`).emit("call:media_state", {
+      fromUserId: userId,
+      mediaState,
+    });
+  });
 };

@@ -107,6 +107,14 @@ export interface IncomingCall {
   offer: RTCSessionDescriptionInit;
 }
 
+export interface CallMediaState {
+  hasAudio: boolean;
+  hasVideo: boolean;
+  isCameraUnavailable: boolean;
+  isMuted: boolean;
+  isCamOff: boolean;
+}
+
 export interface TypingUser {
   _id: string;
   name: string;

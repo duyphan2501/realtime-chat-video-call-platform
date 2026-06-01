@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import { useSocketStore } from "@/store";
 import { useChatHandlers } from "./handlers/useChatHandlers";
 import { usePresenceHandlers } from "./handlers/usePresenceHandlers";
@@ -15,6 +16,21 @@ export function useSocketEvents() {
   useCallHandlers(socket);
   useFriendHandlers(socket);
   useGroupHandlers(socket);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const notifyReady = () => {
+      socket.emit("client:ready");
+    };
+
+    if (socket.connected) notifyReady();
+    socket.on("connect", notifyReady);
+
+    return () => {
+      socket.off("connect", notifyReady);
+    };
+  }, [socket]);
 
   // Bạn có thể thêm các module khác như Notificatio tại đây
 }

@@ -9,7 +9,7 @@ import {
   MessageSquareIcon,
   Loader2,
 } from "lucide-react";
-import { useCallStore, useConversationStore, useSocketStore } from "@/store";
+import { useCallStore, useConversationStore } from "@/store";
 import { useRingCountdown, useWebRTC } from "@/hooks";
 import { useCallService } from "@/services";
 import { CallStatus } from "@/types";
@@ -19,9 +19,10 @@ import { getAvatar } from "@/utils/user.utils";
 const RING_TIMEOUT_SECONDS = 30;
 
 export default function IncomingCallPopup() {
-  const { status, setStatus, incoming } = useCallStore.getState();
-  const { acceptCall, endCall } = useWebRTC();
-  const socket = useSocketStore((s) => s.socket);
+  const status = useCallStore((s) => s.status);
+  const setStatus = useCallStore((s) => s.setStatus);
+  const incoming = useCallStore((s) => s.incoming);
+  const { acceptCall } = useWebRTC();
   const { rejectCall } = useCallService();
   const conversationId = useCallStore(s => s.conversationId)
   const setActiveId = useConversationStore(s => s.setActiveId)
@@ -55,15 +56,12 @@ export default function IncomingCallPopup() {
 
     try {
       await acceptCall();
-    } catch (err: any) {
-      const isPermissionDenied =
-        err?.name === "NotAllowedError" ||
-        err?.name === "PermissionDeniedError";
-
+    } catch (err: unknown) {
+      const error = err as Error;
       setPermissionError(
-        isPermissionDenied
-          ? "Camera/microphone access was denied. Please allow access and try again."
-          : "Could not access camera or microphone. Please check your devices.",
+        useCallStore.getState().mediaError ||
+          error.message ||
+          "Could not access camera or microphone. Please check your devices.",
       );
       setIsAccepting(false);
     }
@@ -75,29 +73,30 @@ export default function IncomingCallPopup() {
     useCallStore.getState().reset();
   };
 
-  // Auto-decline when time runs out
-  const handleAutoDecline = () => {
-    if (useCallStore.getState().status !== "ringing") return;
-    useCallStore.getState().reset();
-  };
-
   useEffect(() => {
-    if (timeLeft === 0 && status === "ringing") handleAutoDecline();
-  }, [timeLeft]);
+    if (timeLeft === 0 && status === "ringing") {
+      useCallStore.getState().reset();
+    }
+  }, [status, timeLeft]);
 
   // Separate: when timeLeft reaches 0, trigger auto-decline AFTER render completes
   useEffect(() => {
     if (timeLeft === 0 && !autoDeclineFiredRef.current) {
       autoDeclineFiredRef.current = true;
-      handleAutoDecline();
+      if (useCallStore.getState().status === "ringing") {
+        useCallStore.getState().reset();
+      }
     }
   }, [timeLeft]);
 
   // Reset local state if popup closes
   useEffect(() => {
     if (status !== "ringing") {
-      setIsAccepting(false);
-      setPermissionError(null);
+      const timer = setTimeout(() => {
+        setIsAccepting(false);
+        setPermissionError(null);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [status]);
 
@@ -289,7 +288,7 @@ export default function IncomingCallPopup() {
             <div className="flex items-center justify-between p-4 rounded-[18px] bg-white/4 border border-white/6">
               <div>
                 <p className="text-white text-[13px] font-semibold">
-                  Can't talk right now?
+                  Can&apos;t talk right now?
                 </p>
                 <p className="text-white/35 text-xs mt-0.5">
                   Send a quick message instead

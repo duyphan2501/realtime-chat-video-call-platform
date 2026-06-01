@@ -45,6 +45,49 @@ const isValidMessage = (message: unknown): message is Message =>
   typeof message === "object" &&
   typeof (message as { _id?: unknown })._id === "string";
 
+const getMessageTime = (message: Message) => {
+  const time = new Date(message.createdAt).getTime();
+  return Number.isNaN(time) ? 0 : time;
+};
+
+const isSameMessage = (a: Message, b: Message) => {
+  const sameId = a._id && b._id && a._id === b._id;
+  const sameTempId = a.tempId && b.tempId && a.tempId === b.tempId;
+  const tempMatchesId =
+    (a.tempId && b._id && a.tempId === b._id) ||
+    (a._id && b.tempId && a._id === b.tempId);
+
+  return sameId || sameTempId || tempMatchesId;
+};
+
+const mergeMessages = (existing: Message[], incoming: Message[]) => {
+  const byId = new Map<string, Message>();
+
+  [...existing, ...incoming].filter(isValidMessage).forEach((message) => {
+    let matchedKey: string | null = null;
+
+    byId.forEach((cachedMessage, key) => {
+      if (isSameMessage(cachedMessage, message)) {
+        matchedKey = key;
+      }
+    });
+
+    const key = matchedKey ?? message.tempId ?? message._id;
+    const previous = matchedKey ? byId.get(matchedKey) : null;
+    if (matchedKey) {
+      byId.delete(matchedKey);
+    }
+    byId.set(key, {
+      ...(previous ?? {}),
+      ...message,
+    });
+  });
+
+  return Array.from(byId.values()).sort(
+    (a, b) => getMessageTime(a) - getMessageTime(b),
+  );
+};
+
 export const useMessageStore = create<MessageState>((set) => ({
   messages: {},
   meta: {},
@@ -55,7 +98,10 @@ export const useMessageStore = create<MessageState>((set) => ({
   setMessages: (cid, msgs, hasMore, nextCursor) =>
     set((s) => {
       const newOrder = [cid, ...s.activeOrder.filter((id) => id !== cid)];
-      const newMessages = { ...s.messages, [cid]: msgs.filter(isValidMessage) };
+      const newMessages = {
+        ...s.messages,
+        [cid]: mergeMessages(s.messages[cid] || [], msgs),
+      };
       const newMeta = { ...s.meta, [cid]: { hasMore, nextCursor } };
       let finalOrder = newOrder;
 
@@ -66,7 +112,6 @@ export const useMessageStore = create<MessageState>((set) => ({
         delete newMeta[cidToRemove];
         finalOrder = newOrder.slice(0, MAX_CONVERSATIONS_IN_RAM);
       }
-
       return { messages: newMessages, meta: newMeta, activeOrder: finalOrder };
     }),
 
@@ -75,10 +120,10 @@ export const useMessageStore = create<MessageState>((set) => ({
     set((s) => ({
       messages: {
         ...s.messages,
-        [cid]: [
-          ...msgs.filter(isValidMessage).reverse(),
-          ...(s.messages[cid] || []),
-        ], // Old messages inserted at the beginning
+        [cid]: mergeMessages(
+          msgs.filter(isValidMessage).reverse(),
+          s.messages[cid] || [],
+        ),
       },
       meta: {
         ...s.meta,

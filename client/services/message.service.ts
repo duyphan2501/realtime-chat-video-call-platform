@@ -48,7 +48,7 @@ export const useMessageService = () => {
     const currentMeta = meta[conversationId];
     const currentMsgs = messages[conversationId] || [];
 
-    if (!isLoadMore && currentMsgs.length > 0) {
+    if (!isLoadMore && currentMsgs.length > 0 && currentMeta) {
       return;
     }
 

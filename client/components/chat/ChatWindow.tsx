@@ -190,8 +190,7 @@ export default function ChatWindow({
     (s) => s.onlineUsers[otherUserId || ""]?.lastActive,
   );
   const isOtherOnline = !isGroup && isOtherOnlineRaw;
-
-  return (
+  return (  
     <div className="relative flex min-w-0 flex-1 overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* ── Header ── */}
