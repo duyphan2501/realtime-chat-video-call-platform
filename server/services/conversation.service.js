@@ -41,11 +41,13 @@ const getNormalizedConversationById = async (conversationId) => {
 
 export const ConversationService = {
   getConversations: async ({ userId, type, cursor, lastId, limit = 10 }) => {
+    // 1. Định nghĩa các điều kiện cơ bản ban đầu
     const match = {
       "participants.user": userId,
       "hiddenFor.user": { $ne: userId },
       $or: [{ lastMessage: { $exists: true } }, { createdBy: userId }],
     };
+
     if (type === "direct" || type === "group") match.type = type;
 
     const hasCursor = cursor && cursor !== "null" && cursor !== "undefined";
@@ -53,15 +55,24 @@ export const ConversationService = {
 
     if (hasCursor && hasLastId) {
       const cursorDate = new Date(cursor);
-
       if (!isNaN(cursorDate.getTime())) {
-        match.$or = [
-          { lastMessageAt: { $lt: cursorDate } },
-          {
-            lastMessageAt: cursorDate,
-            _id: { $lt: new mongoose.Types.ObjectId(lastId) },
-          },
-        ];
+        // 2. Tạo điều kiện phân trang riêng biệt
+        const paginationCondition = {
+          $or: [
+            { lastMessageAt: { $lt: cursorDate } },
+            {
+              lastMessageAt: cursorDate,
+              _id: { $lt: new mongoose.Types.ObjectId(lastId) },
+            },
+          ],
+        };
+
+        // 3. Sử dụng $and để gộp cả 2: Giữ lại toàn bộ match cũ VÀ thêm điều kiện phân trang
+        // Cách này biến match thành: { ...match cũ..., $and: [ { $or: match cũ }, { $or: phân trang } ] }
+        const baseOr = match.$or;
+        delete match.$or; // Xóa $or cũ ở lớp ngoài cùng để tránh xung đột cấu trúc
+
+        match.$and = [{ $or: baseOr }, paginationCondition];
       }
     }
 
