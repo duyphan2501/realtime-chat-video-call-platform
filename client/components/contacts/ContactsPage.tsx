@@ -122,6 +122,7 @@ export default function ContactsPage() {
       <AddFriendModal
         isOpen={showAddFriendModal}
         onClose={() => setShowAddFriendModal(false)}
+        onStartChat={handleStartChat}
       />
     </div>
   );
