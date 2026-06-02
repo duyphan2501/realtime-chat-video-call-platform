@@ -136,7 +136,7 @@ export default function ContactList({
       </div>
 
       {/* ── Tabs ─────────────────────────────────── */}
-      <div className="flex gap-6 px-8 border-b  border-slate-800">
+      <div className="flex gap-6 px-4 sm:px-8 border-b  border-slate-800">
         <button
           onClick={() => setTab("all")}
           className={`text-sm font-medium pb-4 pt-1 -mb-0.5 transition-colors border-b-2 ${
@@ -181,7 +181,7 @@ export default function ContactList({
       </div>
 
       {/* ── Content ────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">
+      <div className="flex-1 overflow-y-auto sm:px-4 pb-8">
         <div className="max-w-6xl mx-auto space-y-1">
           {/* All Friends Tab */}
           {tab === "all" && (
