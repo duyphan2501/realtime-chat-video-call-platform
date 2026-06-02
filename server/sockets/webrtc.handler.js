@@ -76,8 +76,22 @@ export default (io, socket) => {
     io.to(`user_${targetUserId}`).emit("webrtc:answer", { answer, peerUser });
   });
 
-  socket.on("webrtc:ice_candidate", ({ targetUserId, candidate }) => {
-    io.to(`user_${targetUserId}`).emit("webrtc:ice_candidate", { candidate });
+  socket.on("webrtc:ice_candidate", async ({ targetUserId, candidate }) => {
+    if (!targetUserId || !candidate) return;
+
+    const rawCall = await redisClient.hGet("active_calls", userId);
+    if (!rawCall) return;
+
+    const activeCall = JSON.parse(rawCall);
+    const isPeer =
+      activeCall.callerId === targetUserId ||
+      activeCall.partnerId === targetUserId;
+    if (!isPeer) return;
+
+    io.to(`user_${targetUserId}`).emit("webrtc:ice_candidate", {
+      candidate,
+      fromUserId: userId,
+    });
   });
 
   socket.on("call:media_state", ({ targetUserId, mediaState }) => {

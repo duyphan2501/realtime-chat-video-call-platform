@@ -1,6 +1,15 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
+import type { ReactNode } from "react";
 import { useSocketStore, useCallStore, useConversationStore } from "@/store";
 import { useShallow } from "zustand/react/shallow";
 import { CallMediaState, CallType, User } from "@/types";
@@ -21,7 +30,6 @@ const getIceServers = (): RTCIceServer[] => {
   const turnCredential = process.env.NEXT_PUBLIC_TURN_CREDENTIAL;
 
   const parsedTurnUrls = turnUrls?.split(",").map((url) => url.trim()).filter(Boolean);
-
   if (parsedTurnUrls?.length) {
     servers.push({
       urls: parsedTurnUrls,
@@ -35,10 +43,14 @@ const getIceServers = (): RTCIceServer[] => {
 
 const ICE_SERVERS = getIceServers();
 
-const pcRef: { current: RTCPeerConnection | null } = { current: null };
-const pcOwnerRef: { current: symbol | null } = { current: null };
-const iceCandidateQueueRef: { current: RTCIceCandidateInit[] } = { current: [] };
-const remoteStreamRef: { current: MediaStream | null } = { current: null };
+type QueuedIceCandidate = {
+  candidate: RTCIceCandidateInit;
+  fromUserId?: string;
+};
+
+const getCandidateKey = (candidate: RTCIceCandidateInit) =>
+  candidate.candidate ||
+  `${candidate.sdpMid ?? ""}:${candidate.sdpMLineIndex ?? ""}:${candidate.usernameFragment ?? ""}`;
 
 class MediaAccessError extends Error {
   name: string;
@@ -56,6 +68,14 @@ type LocalMediaResult = {
   hasVideo: boolean;
   audioError: unknown;
   videoError: unknown;
+};
+
+type WebRTCActions = {
+  startCall: (targetUserId: string, type: CallType) => Promise<void>;
+  endCall: () => void;
+  acceptCall: () => Promise<void>;
+  recoverLocalMedia: () => Promise<void>;
+  setCameraEnabled: (enabled: boolean) => Promise<void>;
 };
 
 const getMediaErrorMessage = (error: unknown, kind: "audio" | "video") => {
@@ -79,8 +99,14 @@ const getMediaErrorMessage = (error: unknown, kind: "audio" | "video") => {
     : "Could not access camera. The call can continue with audio.";
 };
 
-export function useWebRTC() {
+const WebRTCContext = createContext<WebRTCActions | null>(null);
+
+function useWebRTCController(): WebRTCActions {
   const instanceIdRef = useRef(Symbol("useWebRTC"));
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const pcOwnerRef = useRef<symbol | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
+  const iceCandidateQueueRef = useRef<QueuedIceCandidate[]>([]);
   const recoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const permissionStatusRefs = useRef<PermissionStatus[]>([]);
   const isEndingRef = useRef(false);
@@ -123,6 +149,21 @@ export function useWebRTC() {
       setMediaPermissions: s.setMediaPermissions,
       setCamOff: s.setCamOff,
     })),
+  );
+
+  const queueIceCandidate = useCallback(
+    (candidate: RTCIceCandidateInit, fromUserId?: string) => {
+      const key = `${fromUserId ?? ""}:${getCandidateKey(candidate)}`;
+      const isQueued = iceCandidateQueueRef.current.some(
+        (queued) =>
+          `${queued.fromUserId ?? ""}:${getCandidateKey(queued.candidate)}` === key,
+      );
+
+      if (!isQueued) {
+        iceCandidateQueueRef.current.push({ candidate, fromUserId });
+      }
+    },
+    [],
   );
 
   const emitMediaState = useCallback(() => {
@@ -273,12 +314,18 @@ export function useWebRTC() {
     if (!pcRef.current?.remoteDescription) return;
 
     while (iceCandidateQueueRef.current.length > 0) {
-      const candidate = iceCandidateQueueRef.current.shift();
-      if (!candidate) continue;
+      const queued = iceCandidateQueueRef.current.shift();
+      if (!queued) continue;
+
+      const { peerUser, incoming } = useCallStore.getState();
+      const expectedPeerId = peerUser?._id ?? incoming?.from?._id;
+      if (queued.fromUserId && expectedPeerId && queued.fromUserId !== expectedPeerId) {
+        continue;
+      }
 
       try {
         if (pcRef.current.signalingState !== "closed") {
-          await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+          await pcRef.current.addIceCandidate(new RTCIceCandidate(queued.candidate));
         }
       } catch (err) {
         console.warn("Flush ICE candidate failed:", err);
@@ -302,8 +349,12 @@ export function useWebRTC() {
     pcOwnerRef.current = null;
   }, []);
 
-  const createPC = useCallback(() => {
+  const createPC = useCallback((preserveIceQueue = false) => {
+    const queuedCandidates = preserveIceQueue ? iceCandidateQueueRef.current : [];
     closePeerConnection(true);
+    if (preserveIceQueue) {
+      iceCandidateQueueRef.current = queuedCandidates;
+    }
 
     pcOwnerRef.current = instanceIdRef.current;
     remoteStreamRef.current = new MediaStream();
@@ -534,7 +585,7 @@ export function useWebRTC() {
       const result = await acquireLocalMedia(type);
       setLocalStream(result.stream);
 
-      const connection = createPC();
+      const connection = createPC(true);
       prepareSenders(connection, type, result.stream);
       setRole("callee");
       setPeerUser(incoming.from);
@@ -614,12 +665,21 @@ export function useWebRTC() {
 
     const onIceCandidate = async ({
       candidate,
+      fromUserId,
     }: {
       candidate: RTCIceCandidateInit;
+      fromUserId?: string;
     }) => {
-      if (pcOwnerRef.current !== instanceIdRef.current) return;
+      if (!candidate) return;
 
-      const connection = pcRef.current;
+      const { peerUser, incoming } = useCallStore.getState();
+      const expectedPeerId = peerUser?._id ?? incoming?.from?._id;
+      if (fromUserId && expectedPeerId && fromUserId !== expectedPeerId) return;
+
+      const isOwner = pcOwnerRef.current === instanceIdRef.current;
+      if (pcOwnerRef.current && !isOwner) return;
+
+      const connection = isOwner ? pcRef.current : null;
       if (connection?.remoteDescription && connection.signalingState !== "closed") {
         try {
           await connection.addIceCandidate(new RTCIceCandidate(candidate));
@@ -627,7 +687,7 @@ export function useWebRTC() {
           console.warn("addIceCandidate failed:", err);
         }
       } else {
-        iceCandidateQueueRef.current.push(candidate);
+        queueIceCandidate(candidate, fromUserId);
       }
     };
 
@@ -638,7 +698,7 @@ export function useWebRTC() {
       socket.off("webrtc:answer", onAnswer);
       socket.off("webrtc:ice_candidate", onIceCandidate);
     };
-  }, [flushIceQueue, setPeerUser, socket]);
+  }, [flushIceQueue, queueIceCandidate, setPeerUser, socket]);
 
   useEffect(() => {
     const { status } = useCallStore.getState();
@@ -690,11 +750,26 @@ export function useWebRTC() {
     };
   }, [closePeerConnection]);
 
-  return {
+  return useMemo(() => ({
     startCall,
     endCall,
     acceptCall,
     recoverLocalMedia,
     setCameraEnabled,
-  };
+  }), [acceptCall, endCall, recoverLocalMedia, setCameraEnabled, startCall]);
+}
+
+export function WebRTCProvider({ children }: { children: ReactNode }) {
+  const actions = useWebRTCController();
+
+  return createElement(WebRTCContext.Provider, { value: actions }, children);
+}
+
+export function useWebRTC() {
+  const actions = useContext(WebRTCContext);
+  if (!actions) {
+    throw new Error("useWebRTC must be used inside WebRTCProvider");
+  }
+
+  return actions;
 }
