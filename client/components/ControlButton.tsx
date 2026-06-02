@@ -37,6 +37,7 @@ export default function ControlButton({
   return (
     <div className="flex flex-col items-center gap-1.5 group">
       <button
+        type="button"
         onClick={onClick}
         disabled={disabled}
         aria-pressed={active}

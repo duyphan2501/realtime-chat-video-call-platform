@@ -5,12 +5,40 @@ import { useSocketStore, useCallStore, useConversationStore } from "@/store";
 import { useShallow } from "zustand/react/shallow";
 import { CallMediaState, CallType, User } from "@/types";
 
-const ICE_SERVERS: RTCIceServer[] = [
-  { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
-];
+const getIceServers = (): RTCIceServer[] => {
+  const servers: RTCIceServer[] = [
+    {
+      urls: [
+        "stun:stun.l.google.com:19302",
+        "stun:stun1.l.google.com:19302",
+        "stun:stun2.l.google.com:19302",
+      ],
+    },
+  ];
+
+  const turnUrls = process.env.NEXT_PUBLIC_TURN_URLS;
+  const turnUsername = process.env.NEXT_PUBLIC_TURN_USERNAME;
+  const turnCredential = process.env.NEXT_PUBLIC_TURN_CREDENTIAL;
+
+  const parsedTurnUrls = turnUrls?.split(",").map((url) => url.trim()).filter(Boolean);
+
+  if (parsedTurnUrls?.length) {
+    servers.push({
+      urls: parsedTurnUrls,
+      username: turnUsername,
+      credential: turnCredential,
+    });
+  }
+
+  return servers;
+};
+
+const ICE_SERVERS = getIceServers();
 
 const pcRef: { current: RTCPeerConnection | null } = { current: null };
+const pcOwnerRef: { current: symbol | null } = { current: null };
 const iceCandidateQueueRef: { current: RTCIceCandidateInit[] } = { current: [] };
+const remoteStreamRef: { current: MediaStream | null } = { current: null };
 
 class MediaAccessError extends Error {
   name: string;
@@ -52,6 +80,7 @@ const getMediaErrorMessage = (error: unknown, kind: "audio" | "video") => {
 };
 
 export function useWebRTC() {
+  const instanceIdRef = useRef(Symbol("useWebRTC"));
   const recoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const permissionStatusRefs = useRef<PermissionStatus[]>([]);
   const isEndingRef = useRef(false);
@@ -257,16 +286,31 @@ export function useWebRTC() {
     }
   }, []);
 
-  const createPC = useCallback(() => {
+  const closePeerConnection = useCallback((force = false) => {
+    if (!force && pcOwnerRef.current !== instanceIdRef.current) return;
+
     if (pcRef.current) {
       pcRef.current.onicecandidate = null;
       pcRef.current.ontrack = null;
       pcRef.current.onconnectionstatechange = null;
       pcRef.current.close();
+      pcRef.current = null;
     }
 
     iceCandidateQueueRef.current = [];
-    const connection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    remoteStreamRef.current = null;
+    pcOwnerRef.current = null;
+  }, []);
+
+  const createPC = useCallback(() => {
+    closePeerConnection(true);
+
+    pcOwnerRef.current = instanceIdRef.current;
+    remoteStreamRef.current = new MediaStream();
+    const connection = new RTCPeerConnection({
+      iceServers: ICE_SERVERS,
+      iceTransportPolicy: process.env.NEXT_PUBLIC_FORCE_TURN === "true" ? "relay" : "all",
+    });
 
     connection.onicecandidate = (event) => {
       if (event.candidate && socket) {
@@ -289,15 +333,32 @@ export function useWebRTC() {
     };
 
     connection.ontrack = (event) => {
-      if (event.streams[0]) setRemoteStream(event.streams[0]);
+      const [stream] = event.streams;
+      if (stream) {
+        setRemoteStream(stream);
+        return;
+      }
+
+      const remoteStream = remoteStreamRef.current ?? new MediaStream();
+      remoteStreamRef.current = remoteStream;
+
+      if (!remoteStream.getTracks().some((track) => track.id === event.track.id)) {
+        remoteStream.addTrack(event.track);
+      }
+
+      setRemoteStream(remoteStream);
     };
 
     pcRef.current = connection;
     return connection;
-  }, [setRemoteStream, setStartTime, setStatus, socket]);
+  }, [closePeerConnection, setRemoteStream, setStartTime, setStatus, socket]);
 
   const prepareSenders = useCallback(
     (connection: RTCPeerConnection, type: CallType, stream: MediaStream) => {
+      if (connection.signalingState === "closed") {
+        throw new Error("Cannot add local media because the WebRTC connection is closed.");
+      }
+
       const audioTrack = stream.getAudioTracks()[0];
       if (audioTrack) connection.addTrack(audioTrack, stream);
 
@@ -404,16 +465,20 @@ export function useWebRTC() {
 
   const startCall = useCallback(
     async (targetUserId: string, type: CallType) => {
+      let acquiredStream: MediaStream | null = null;
+
       try {
         setStatus("connecting");
         setRole("caller");
         setCallType(type);
         setPeerUser({ _id: targetUserId, name: "", avatar: "" });
 
-        const connection = createPC();
         const result = await acquireLocalMedia(type);
-        setLocalStream(result.stream);
+        acquiredStream = result.stream;
+
+        const connection = createPC();
         prepareSenders(connection, type, result.stream);
+        setLocalStream(result.stream);
 
         const offer = await connection.createOffer();
         await connection.setLocalDescription(offer);
@@ -434,6 +499,8 @@ export function useWebRTC() {
         emitMediaState();
       } catch (err) {
         console.error("Start call failed:", err);
+        acquiredStream?.getTracks().forEach((track) => track.stop());
+        closePeerConnection(true);
         setStatus("idle");
         setLocalStream(null);
         setMediaError(getMediaErrorMessage(err, "audio"));
@@ -442,6 +509,7 @@ export function useWebRTC() {
     },
     [
       acquireLocalMedia,
+      closePeerConnection,
       createPC,
       emitMediaState,
       prepareSenders,
@@ -510,20 +578,12 @@ export function useWebRTC() {
     const { localStream } = useCallStore.getState();
     localStream?.getTracks().forEach((track) => track.stop());
 
-    if (pcRef.current) {
-      pcRef.current.onicecandidate = null;
-      pcRef.current.ontrack = null;
-      pcRef.current.onconnectionstatechange = null;
-      pcRef.current.close();
-      pcRef.current = null;
-    }
-
-    iceCandidateQueueRef.current = [];
+    closePeerConnection(true);
 
     setTimeout(() => {
       isEndingRef.current = false;
     }, 100);
-  }, []);
+  }, [closePeerConnection]);
 
   useEffect(() => {
     if (!socket) return;
@@ -535,6 +595,8 @@ export function useWebRTC() {
       answer: RTCSessionDescriptionInit;
       peerUser: User;
     }) => {
+      if (pcOwnerRef.current !== instanceIdRef.current) return;
+
       const connection = pcRef.current;
       setPeerUser(peerUser);
       if (!connection || connection.signalingState !== "have-local-offer") {
@@ -555,6 +617,8 @@ export function useWebRTC() {
     }: {
       candidate: RTCIceCandidateInit;
     }) => {
+      if (pcOwnerRef.current !== instanceIdRef.current) return;
+
       const connection = pcRef.current;
       if (connection?.remoteDescription && connection.signalingState !== "closed") {
         try {
@@ -622,9 +686,9 @@ export function useWebRTC() {
 
   useEffect(() => {
     return () => {
-      endCall();
+      closePeerConnection(false);
     };
-  }, [endCall]);
+  }, [closePeerConnection]);
 
   return {
     startCall,

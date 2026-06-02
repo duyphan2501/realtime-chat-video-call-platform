@@ -1,24 +1,28 @@
 import { useCallStore } from "@/store";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export function useRingCountdown(timeoutSeconds = 30) {
   const ringStartedAt = useCallStore((s) => s.ringStartedAt);
-  const [timeLeft, setTimeLeft] = useState(timeoutSeconds);
+
+  const getRemainingTime = useCallback((startedAt: number | null) => {
+    if (!startedAt) return timeoutSeconds;
+
+    const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+    return Math.max(0, timeoutSeconds - elapsed);
+  }, [timeoutSeconds]);
+
+  const [timeLeft, setTimeLeft] = useState(() => getRemainingTime(null));
 
   useEffect(() => {
     if (!ringStartedAt) return;
 
-    const tick = () => {
-      const elapsed = Math.floor((Date.now() - ringStartedAt) / 1000);
-      const remaining = Math.max(0, timeoutSeconds - elapsed);
-      setTimeLeft(remaining);
-    };
+    const tick = () => setTimeLeft(getRemainingTime(ringStartedAt));
 
-    tick(); 
-    const id = setInterval(tick, 500); // poll 500ms để bù clock drift
+    tick();
+    const id = setInterval(tick, 500);
 
     return () => clearInterval(id);
-  }, [ringStartedAt, timeoutSeconds]);
+  }, [getRemainingTime, ringStartedAt]);
 
-  return timeLeft;
+  return ringStartedAt ? getRemainingTime(ringStartedAt) : timeLeft;
 }

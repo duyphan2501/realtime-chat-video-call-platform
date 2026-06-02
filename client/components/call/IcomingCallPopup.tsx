@@ -74,20 +74,21 @@ export default function IncomingCallPopup() {
   };
 
   useEffect(() => {
-    if (timeLeft === 0 && status === "ringing") {
-      useCallStore.getState().reset();
+    if (status === "ringing" && timeLeft > 0) {
+      autoDeclineFiredRef.current = false;
     }
   }, [status, timeLeft]);
 
-  // Separate: when timeLeft reaches 0, trigger auto-decline AFTER render completes
   useEffect(() => {
     if (timeLeft === 0 && !autoDeclineFiredRef.current) {
       autoDeclineFiredRef.current = true;
       if (useCallStore.getState().status === "ringing") {
-        useCallStore.getState().reset();
+        void rejectCall("missed").finally(() => {
+          useCallStore.getState().reset();
+        });
       }
     }
-  }, [timeLeft]);
+  }, [rejectCall, timeLeft]);
 
   // Reset local state if popup closes
   useEffect(() => {

@@ -2,7 +2,7 @@ import Logo from "../Logo";
 
 const AuthLeft = () => {
   return (
-    <div className="hidden lg:flex flex-col justify-between p-12 border-r border-gray-800">
+    <div className="hidden lg:flex flex-col justify-between">
       <div className="flex items-center gap-3 text-primary">
         <div className="size-8 mb-5">
           <Logo />

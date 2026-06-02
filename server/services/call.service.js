@@ -12,6 +12,13 @@ const processCallEnd = async ({ userId, callInfo, reason = "ended" }) => {
 
   const otherUserId = userId === callerId ? partnerId : callerId;
   const duration = Math.floor((Date.now() - startTime) / 1000);
+  const lockKey = `call_end_lock:${callerId}:${startTime}`;
+  const lockAcquired = await redisClient.set(lockKey, "1", {
+    NX: true,
+    EX: 30,
+  });
+
+  if (!lockAcquired) return;
 
   try {
     await MessageService.sendMessage({
@@ -28,6 +35,7 @@ const processCallEnd = async ({ userId, callInfo, reason = "ended" }) => {
     io.to(`user_${otherUserId}`).emit(eventName, {
       fromUserId: userId,
       reason,
+      startedAt: startTime,
     });
   } finally {
     await redisClient.hDel("active_calls", userId);

@@ -10,6 +10,29 @@ export function useCallHandlers(socket: Socket | null) {
   useEffect(() => {
     if (!socket) return;
 
+    const isStaleCallEvent = (startedAt?: number) => {
+      const { ringStartedAt } = useCallStore.getState();
+      return Boolean(startedAt && ringStartedAt && startedAt !== ringStartedAt);
+    };
+
+    const scheduleTerminalReset = (terminalStatus: CallStatus, startedAt?: number) => {
+      if (endedTimerRef.current) clearTimeout(endedTimerRef.current);
+      const scheduledRingStartedAt = useCallStore.getState().ringStartedAt;
+
+      endedTimerRef.current = setTimeout(() => {
+        const { status, ringStartedAt } = useCallStore.getState();
+        const sameCall = startedAt
+          ? startedAt === ringStartedAt
+          : scheduledRingStartedAt === ringStartedAt;
+
+        if (status === terminalStatus && sameCall) {
+          useCallStore.getState().reset();
+        }
+
+        endedTimerRef.current = null;
+      }, 2000);
+    };
+
     const onIncoming = (data: {
       incoming: IncomingCall;
       conversationId: string;
@@ -25,29 +48,35 @@ export function useCallHandlers(socket: Socket | null) {
       call.setRingStartedAt(data.startedAt);
     };
 
-    const onRejected = ({ reason }: { reason: CallStatus }) => {
+    const onRejected = ({
+      reason,
+      startedAt,
+    }: {
+      reason: CallStatus;
+      startedAt?: number;
+    }) => {
+      if (isStaleCallEvent(startedAt)) return;
+
       const { status, setStatus } = useCallStore.getState();
       if (status === "idle") return;
       setStatus(reason);
-      if (endedTimerRef.current) clearTimeout(endedTimerRef.current);
-
-      endedTimerRef.current = setTimeout(() => {
-        useCallStore.getState().reset();
-        endedTimerRef.current = null;
-      }, 2000);
+      scheduleTerminalReset(reason, startedAt);
     };
 
-    const onEnded = () => {
+    const onEnded = ({
+      reason = "ended",
+      startedAt,
+    }: {
+      reason?: CallStatus;
+      startedAt?: number;
+    } = {}) => {
+      if (isStaleCallEvent(startedAt)) return;
+
       // Clear timer cũ nếu event fire liên tiếp
       const { status, setStatus } = useCallStore.getState();
       if (status === "idle") return;
-      setStatus("ended");
-      if (endedTimerRef.current) clearTimeout(endedTimerRef.current);
-
-      endedTimerRef.current = setTimeout(() => {
-        useCallStore.getState().reset();
-        endedTimerRef.current = null;
-      }, 2000);
+      setStatus(reason);
+      scheduleTerminalReset(reason, startedAt);
     };
 
     const onUserBusy = () => {
