@@ -56,8 +56,14 @@ const isSameMessage = (a: Message, b: Message) => {
   const tempMatchesId =
     (a.tempId && b._id && a.tempId === b._id) ||
     (a._id && b.tempId && a._id === b.tempId);
+  const sameCallLog =
+    a.type === b.type &&
+    (a.type === "audio" || a.type === "video") &&
+    a.sender?._id === b.sender?._id &&
+    a.callData?.status === b.callData?.status &&
+    Math.abs(getMessageTime(a) - getMessageTime(b)) < 2000;
 
-  return sameId || sameTempId || tempMatchesId;
+  return sameId || sameTempId || tempMatchesId || sameCallLog;
 };
 
 const mergeMessages = (existing: Message[], incoming: Message[]) => {
@@ -143,7 +149,7 @@ export const useMessageStore = create<MessageState>((set) => ({
       const currentMsgs = s.messages[cid] || [];
 
       // Avoid duplicates (if socket sends back message just sent)
-      if (currentMsgs.find((m) => m._id === msg._id)) return s;
+      if (currentMsgs.some((m) => isSameMessage(m, msg))) return s;
       const existsIndex = currentMsgs.findIndex((m) => m._id === msg.tempId);
 
       if (existsIndex > -1) {

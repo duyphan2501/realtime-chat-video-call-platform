@@ -139,6 +139,7 @@ server/
 online_users              → Set  — all currently online userIds
 online_user:{userId}      → Set  — socketIds for that user (multi-tab)
 active_calls              → Hash — userId → JSON call metadata
+call_end_lock:{callerId}:{startTime} → String — short-lived lock for terminal call-message dedupe
 {CACHE_USER_PREFIX}{id}   → String — cached user profile JSON
 ```
 

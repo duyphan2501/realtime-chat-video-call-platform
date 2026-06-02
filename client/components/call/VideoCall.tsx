@@ -47,14 +47,16 @@ export default function VideoCall() {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const endedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const terminatingRef = useRef(false);
 
   const { endCall: endCallAPI, rejectCall } = useCallService();
 
   const handleTerminateCall = useCallback(
     async ({ reason = "ended" }: { reason: CallStatus }) => {
-      const { setStatus, reset, callType } = useCallStore.getState();
+      const { setStatus, reset, callType, ringStartedAt } = useCallStore.getState();
 
-      if (!callType) return;
+      if (!callType || terminatingRef.current) return;
+      terminatingRef.current = true;
 
       setStatus(reason);
       endLocalCall();
@@ -71,7 +73,14 @@ export default function VideoCall() {
 
       if (endedTimerRef.current) clearTimeout(endedTimerRef.current);
       endedTimerRef.current = setTimeout(() => {
-        reset();
+        const currentCall = useCallStore.getState();
+        if (
+          currentCall.status === reason &&
+          currentCall.ringStartedAt === ringStartedAt
+        ) {
+          reset();
+        }
+        terminatingRef.current = false;
         endedTimerRef.current = null;
       }, 2000);
     },
@@ -86,13 +95,17 @@ export default function VideoCall() {
   }, []);
 
   useEffect(() => {
-    if (waitTimeLeft === 0 && !remoteStream) {
-      const { role } = useCallStore.getState();
-      if (role === "caller") {
+    if (waitTimeLeft === 0) {
+      const { role, status, startTime, ringStartedAt } = useCallStore.getState();
+      const hasTimedOut = Boolean(
+        ringStartedAt && Date.now() - ringStartedAt >= 30_000,
+      );
+
+      if (role === "caller" && status === "calling" && !startTime && hasTimedOut) {
         handleTerminateCall({ reason: "missed" });
       }
     }
-  }, [handleTerminateCall, remoteStream, waitTimeLeft]);
+  }, [handleTerminateCall, waitTimeLeft]);
 
   // ── Assign remote stream to video element
   useEffect(() => {
@@ -129,8 +142,9 @@ export default function VideoCall() {
   }, [isCamOff, localStream, status]);
 
   const handleEndCall = () => {
-    if (duration === 0) handleTerminateCall({ reason: "missed" });
-    else handleTerminateCall({ reason: "ended" });
+    const { role, status, startTime } = useCallStore.getState();
+    const isWaitingForAnswer = role === "caller" && status === "calling" && !startTime;
+    handleTerminateCall({ reason: isWaitingForAnswer ? "missed" : "ended" });
   };
 
   const handleToggleCamera = async () => {
@@ -285,7 +299,7 @@ export default function VideoCall() {
 
         {/* Control bar */}
         {(mediaError || isRecoveringMedia) && (
-          <div className="absolute left-1/2 top-4 z-30 flex max-w-[calc(100dvw-2rem)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-warning/25 bg-surface/95 px-4 py-3 text-xs text-white shadow-lg backdrop-blur-md">
+          <div className="absolute left-1/2 top-4 z-30 flex w-full sm:w-fit max-w-[calc(100dvw-2rem)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-warning/25 bg-surface/95 px-4 py-3 text-xs text-white shadow-lg backdrop-blur-md">
             {isRecoveringMedia ? (
               <Loader2 className="h-4 w-4 shrink-0 animate-spin text-warning" />
             ) : (

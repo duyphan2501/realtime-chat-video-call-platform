@@ -106,6 +106,7 @@ export const useCallStore = create<CallStore>((set) => ({
       localStream: null,
       remoteStream: null,
       role: null,
+      ringStartedAt: null,
       conversationId: null,
       mediaError: null,
       isRecoveringMedia: false,
