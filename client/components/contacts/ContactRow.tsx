@@ -39,7 +39,7 @@ export default function ContactRow({
           <img
             src={avatarUrl}
             alt={displayName}
-            className="h-12 w-12 rounded-full object-cover"
+            className="h-12 w-12 shrink-0 rounded-full object-cover"
           />
           <div
             className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-[#0b0b18] ${
@@ -67,7 +67,7 @@ export default function ContactRow({
       </div>
 
       {/* Right: Action buttons (show on hover) */}
-      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="hidden sm:flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           onClick={(e) => {
             e.stopPropagation();

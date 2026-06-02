@@ -77,7 +77,11 @@ export default (io, socket) => {
   });
 
   socket.on("webrtc:ice_candidate", ({ targetUserId, candidate }) => {
-    io.to(`user_${targetUserId}`).emit("webrtc:ice_candidate", { candidate });
+    if (!targetUserId || !candidate) return;
+    io.to(`user_${targetUserId}`).emit("webrtc:ice_candidate", {
+      candidate,
+      fromUserId: userId,
+    });
   });
 
   socket.on("call:media_state", ({ targetUserId, mediaState }) => {

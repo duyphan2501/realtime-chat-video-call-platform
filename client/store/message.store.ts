@@ -149,9 +149,13 @@ export const useMessageStore = create<MessageState>((set) => ({
       const currentMsgs = s.messages[cid] || [];
 
       // Avoid duplicates (if socket sends back message just sent)
-      if (currentMsgs.some((m) => isSameMessage(m, msg))) return s;
       const existsIndex = currentMsgs.findIndex((m) => m._id === msg.tempId);
-
+      if (
+        existsIndex === -1 &&
+        currentMsgs.some((m) => isSameMessage(m, msg))
+      ) {
+        return s;
+      }
       if (existsIndex > -1) {
         const updatedMsgs = [...currentMsgs];
         const oldMsg = updatedMsgs[existsIndex];

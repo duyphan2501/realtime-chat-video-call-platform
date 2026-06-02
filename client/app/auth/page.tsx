@@ -3,7 +3,7 @@ import AuthLeft from "@/components/auth/AuthLeft";
 
 const AuthPage = () => {
   return (
-    <div className="flex w-full overflow-hidden bg-background">
+    <div className="flex w-full overflow-y-auto bg-background max-h-screen">
       <div className="hidden xl:px-16 flex-1 items-center lg:flex w-full justify-end  border-r border-gray-800 md:px-12">
         <AuthLeft />
       </div>
