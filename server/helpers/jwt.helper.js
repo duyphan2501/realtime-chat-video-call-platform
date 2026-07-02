@@ -33,10 +33,11 @@ const generateRefreshToken = async (payload, expire = "7d") => {
 };
 
 const setCookieWithToken = (res, token, name, ttl) => {
+  const isProduction = ENV.NODE_ENV === "production";
   res.cookie(name, token, {
     httpOnly: true,
-    secure: false,
-    sameSite: "lax",
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
     maxAge: ttl,
   });
 };

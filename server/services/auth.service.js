@@ -84,16 +84,12 @@ const googleLogin = async (token) => {
 
 const refreshToken = async (token) => {
   if (!token) throw createHttpError.Unauthorized("Refresh token missing");
-
   const decoded = await verifyRefreshToken(token);
-
-  if (!decoded) throw createHttpError.Unauthorized("Invalid decoded token");
-
+ 
   const user = await UserModel.findOne({
     _id: decoded.userId,
     refreshTokenExpireAt: { $gte: new Date() },
   });
-
   if (!user || user.refreshToken !== token)
     throw createHttpError.Unauthorized("Refresh token expired");
 

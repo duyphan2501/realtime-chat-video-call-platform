@@ -29,12 +29,10 @@ export function useSocketMain() {
       _socket.on("connect", () => {
         setConnected(true);
         setSocket(_socket);
-        console.log("🟢 Socket connected:", _socket?.id);
       });
 
       _socket.on("disconnect", (reason) => {
         setConnected(false);
-        console.log("🔴 Socket disconnected:", reason);
       });
 
       _socket.on("connect_error", async (err) => {

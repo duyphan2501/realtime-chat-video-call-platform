@@ -77,8 +77,6 @@ export default function ChatWindow({
   // 3. Reset trạng thái khi đổi hội thoại
   useEffect(() => {
     fetchMessages(conv._id);
-    // Khi đổi chat, ép nhảy xuống đáy ngay lập tức không đợi render
-    scrollToBottom("auto");
   }, [conv._id]);
 
   const handleScroll = useCallback(async () => {

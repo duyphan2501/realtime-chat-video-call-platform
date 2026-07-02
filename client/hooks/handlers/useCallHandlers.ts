@@ -15,7 +15,10 @@ export function useCallHandlers(socket: Socket | null) {
       return Boolean(startedAt && ringStartedAt && startedAt !== ringStartedAt);
     };
 
-    const scheduleTerminalReset = (terminalStatus: CallStatus, startedAt?: number) => {
+    const scheduleTerminalReset = (
+      terminalStatus: CallStatus,
+      startedAt?: number,
+    ) => {
       if (endedTimerRef.current) clearTimeout(endedTimerRef.current);
       const scheduledRingStartedAt = useCallStore.getState().ringStartedAt;
 
@@ -39,6 +42,10 @@ export function useCallHandlers(socket: Socket | null) {
       callType: CallType;
       startedAt: number;
     }) => {
+      const currentStatus = useCallStore.getState().status;
+      if (currentStatus === "connected" || currentStatus === "calling") {
+        return;
+      } 
       const call = useCallStore.getState();
       call.setIncoming(data.incoming);
       call.setConversationId(data.conversationId);

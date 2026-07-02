@@ -50,17 +50,20 @@ const verifyGoogleToken = async (token) => {
 
 const handleNewRefreshToken = async (foundUser) => {
   const refreshToken = await generateRefreshToken(
-    { userId: foundUser._id },
-    refreshTokenExpiresIn,
+    { userId: foundUser._id }, 
+    refreshTokenExpiresIn
   );
 
-  foundUser.refreshToken = refreshToken;
-  foundUser.refreshTokenExpireAt = new Date(Date.now() + refreshTokenTTL);
-
-  await foundUser.save();
+  await foundUser.updateOne({
+    $set: {
+      refreshToken,
+      refreshTokenExpireAt: new Date(Date.now() + refreshTokenTTL)
+    }
+  });
 
   return refreshToken;
 };
+
 
 const generateAccessTokenAndSetCookies = async (res, payload, refreshToken) => {
   const accessToken = await generateAccessToken(payload, accessTokenExpiresIn);
